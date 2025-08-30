@@ -15,13 +15,13 @@ export const UPSC: ExamSchema = {
   requirements: [
     {
       type: 'Photo',
-      format: 'JPG',
+      format: 'JPEG',
       maxSizeKB: 50,
       dimensions: '200x230',
     },
     {
       type: 'Signature',
-      format: 'JPG',
+      format: 'JPEG',
       maxSizeKB: 20,
       dimensions: '140x60',
     },
