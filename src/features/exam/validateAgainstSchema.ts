@@ -18,11 +18,15 @@ export function validateFileAgainstRequirement(
 ): ValidationResult {
   const errors: string[] = [];
 
-  // Format check
-  const fileFormat = file.type.split('/')[1].toUpperCase(); // e.g., "jpeg" → "JPEG"
-  if (fileFormat !== requirement.format) {
-    errors.push(`Invalid format: expected ${requirement.format}, got ${fileFormat}`);
-  }
+  // Format check with normalization
+const fileFormat = file.type.split('/')[1].toUpperCase();
+
+const normalizeFormat = (format: string) =>
+  format.toUpperCase().replace('JPEG', 'JPG');
+
+if (normalizeFormat(fileFormat) !== normalizeFormat(requirement.format)) {
+  errors.push(`Invalid format: expected ${requirement.format}, got ${fileFormat}`);
+}
 
   // Size check
   const sizeKB = Math.round(file.size / 1024);
