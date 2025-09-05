@@ -4,14 +4,14 @@ export function ExamSelector() {
   const [schemas, setSchemas] = useState<ExamSchema[]>([]);
 
   const addExam = async (examId: string) => {
-    const res = await fetch('/api/exam', {
-      method: 'POST',
-      body: JSON.stringify({ examId }),
-    });
+  const res = await fetch('/api/exam', {
+    method: 'POST',
+    body: JSON.stringify({ examId }),
+  });
 
-    const schema = await res.json();
-    setSchemas((prev) => [...prev, schema]); // inject into validator
-  };
+  const schema = await res.json();
+  setSchemas((prev) => [...prev, schema]);
+};
 
   return (
     <div>
