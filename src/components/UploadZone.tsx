@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useUpload } from '@/features/upload/useUpload';
 import { ExamSchema } from '@/features/exam/examSchema';
+import { generateZip, FileWithMeta } from '@/features/package/zipService';
 
 export function UploadZone({ schema }: { schema: ExamSchema }) {
   const { files, results, handleUpload } = useUpload(schema);
@@ -11,6 +12,24 @@ export function UploadZone({ schema }: { schema: ExamSchema }) {
     if (selected) {
       Array.from(selected).forEach((file) => handleUpload(file));
     }
+  };
+
+  const handleDownloadZip = async () => {
+    const validFiles = files.filter((file) => results[file.name]?.length === 0);
+
+    const fileWithMeta: FileWithMeta[] = validFiles.map((file) => {
+      const matchedReq = schema.requirements.find((r) =>
+        file.name.toLowerCase().includes(r.type.toLowerCase())
+      );
+
+      return {
+        file,
+        requirement: matchedReq!,
+        rollNumber,
+      };
+    });
+
+    await generateZip(fileWithMeta, schema);
   };
 
   return (
@@ -46,6 +65,18 @@ export function UploadZone({ schema }: { schema: ExamSchema }) {
           </div>
         ))}
       </div>
+
+      {files.length > 0 && (
+        <button
+          onClick={handleDownloadZip}
+          disabled={!rollNumber}
+          className={`px-4 py-2 rounded text-white ${
+            rollNumber ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 cursor-not-allowed'
+          }`}
+        >
+          Download ZIP
+        </button>
+      )}
     </div>
   );
 }
