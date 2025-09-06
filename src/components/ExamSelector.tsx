@@ -1,33 +1,34 @@
 import { useState } from 'react';
 
-export function ExamSelector() {
-  const [schemas, setSchemas] = useState<ExamSchema[]>([]);
+export function ExamSelector({ onSchemaFetched }: { onSchemaFetched: (schema: any) => void }) {
+  const [examId, setExamId] = useState('');
 
-  const addExam = async (examId: string) => {
+  const fetchSchema = async () => {
     const res = await fetch('/api/exam', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ examId }),
     });
 
     const schema = await res.json();
-    setSchemas((prev) => [...prev, schema]); // inject into validator
+    onSchemaFetched(schema);
   };
 
   return (
-    <div>
-      {/* Existing exam dropdown */}
-      <select onChange={(e) => addExam(e.target.value)}>
-        <option value="">Select Exam</option>
-        <option value="upsc">UPSC</option>
-        <option value="ssc">SSC</option>
-        <option value="ielts">IELTS</option>
-        {/* More options */}
-      </select>
-
-      {/* Add another button */}
-      <button onClick={() => addExam('custom')}>Add another</button>
-
-      {/* You can now pass `schemas` to your validator or upload hook */}
+    <div className="space-y-2">
+      <input
+        type="text"
+        placeholder="Enter exam ID (e.g. upsc)"
+        value={examId}
+        onChange={(e) => setExamId(e.target.value)}
+        className="border px-2 py-1 rounded w-full"
+      />
+      <button
+        onClick={fetchSchema}
+        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+      >
+        Fetch Schema
+      </button>
     </div>
   );
 }
