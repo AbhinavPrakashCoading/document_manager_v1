@@ -11,7 +11,7 @@ export default function Home() {
   };
 
   return (
-    <main className="p-4 space-y-6">
+    <main className="p-4 space-y-6 max-w-md mx-auto">
       <h1 className="text-xl font-bold">Document Manager</h1>
       <ExamSelector onSchemaFetched={handleSchemaFetched} />
 
@@ -31,4 +31,5 @@ export default function Home() {
 ))}
     </main>
   );
+
 }
