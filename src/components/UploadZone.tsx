@@ -39,14 +39,14 @@ export function UploadZone({ schema }: { schema: ExamSchema }) {
         placeholder="Enter Roll Number"
         value={rollNumber}
         onChange={(e) => setRollNumber(e.target.value)}
-        className="border px-2 py-1 rounded w-full"
+        className="border px-2 py-1 rounded w-full text-sm"
       />
 
       <input
         type="file"
         multiple
         onChange={onFileChange}
-        className="block"
+        className="block w-full text-sm"
       />
 
       <div className="space-y-2">
@@ -70,9 +70,9 @@ export function UploadZone({ schema }: { schema: ExamSchema }) {
         <button
           onClick={handleDownloadZip}
           disabled={!rollNumber}
-          className={`px-4 py-2 rounded text-white ${
-            rollNumber ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 cursor-not-allowed'
-          }`}
+          className={`w-full sm:w-auto px-4 py-2 rounded text-white ${
+  rollNumber ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 cursor-not-allowed'
+}`}
         >
           Download ZIP
         </button>
