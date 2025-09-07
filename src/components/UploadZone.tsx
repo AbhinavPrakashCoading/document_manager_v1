@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useUpload } from '@/features/upload/useUpload';
 import { ExamSchema } from '@/features/exam/examSchema';
 import { generateZip, FileWithMeta } from '@/features/package/zipService';
+import toast from 'react-hot-toast';
+
 
 export function UploadZone({ schema }: { schema: ExamSchema }) {
   const { files, results, handleUpload } = useUpload(schema);
@@ -30,6 +32,8 @@ export function UploadZone({ schema }: { schema: ExamSchema }) {
     });
 
     await generateZip(fileWithMeta, schema);
+    toast.success('ZIP downloaded successfully!');
+
   };
 
   return (

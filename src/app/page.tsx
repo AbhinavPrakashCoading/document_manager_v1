@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ExamSelector } from '@/components/ExamSelector';
 import { UploadZone } from '@/components/UploadZone';
+import toast from 'react-hot-toast';
 
 
 export default function Home() {
