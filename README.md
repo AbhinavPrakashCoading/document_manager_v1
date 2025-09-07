@@ -1,33 +1,56 @@
-# 📦 Document Manager v2
+# 📄 Document Manager MVP
 
-A modular, schema-driven platform for validating and packaging exam documents — dynamically adapting to any exam via real-time scraping and schema injection.
+A schema-aware document manager for exam workflows. Supports dynamic schema ingestion, real-time validation, and ZIP packaging.
+
+---
 
 ## 🚀 Features
 
-- Dynamic schema ingestion via scraping engine
+- Dynamic exam schema ingestion (UPSC, SSC, IELTS)
 - Real-time file validation (format, size, dimensions)
-- ZIP packaging with schema-driven naming
-- Modular architecture (schema, validator, upload, packaging)
+- Roll number-based ZIP packaging
+- Mobile-friendly UI
+- CLI stub for schema scraping
 
-## 🧱 Tech Stack
+---
 
-- Next.js + TypeScript
-- Tailwind + Radix UI
-- JSZip + FileSaver
-- Vitest + React Testing Library
-- Puppeteer (for scraping engine)
+## 🧩 Folder Structure
 
-## 📂 Modules
 
-| Module         | Description                                      |
-|----------------|--------------------------------------------------|
-| `examSchema`   | Defines document requirements per exam           |
-| `validator`    | Validates files against dynamic schema           |
-| `uploadHook`   | Manages file selection and validation state      |
-| `zipService`   | Packages validated files into structured ZIPs    |
-| `scraperEngine`| Scrapes exam portals and generates schemas       |
+src/ components/ ExamSelector.tsx UploadZone.tsx features/ exam/ examSchema.ts upload/ useUpload.ts package/ zipService.ts scraper-engine/ src/ engines/ upsc.ts ssc.ts cli.ts config/ upsc.ts ssc.ts
 
-## 🧪 Tests
 
+---
+
+## 🛠️ Usage
+
+### Frontend
 ```bash
-pnpm test
+pnpm dev
+
+
+pnpm cli --exam upsc
+
+
+📅 Roadmap
+[x] UPSC schema ingestion
+
+[x] SSC + IELTS support
+
+[x] ZIP packaging
+
+[ ] Real-time scraper engine
+
+[ ] Upload history
+
+[ ] Freemium limits
+
+
+🧠 Author
+Built by Abhinav — founder, strategist, and builder.
+
+Code
+
+---
+
+Let me know when you’re ready to drop this in, or if you want to tweak the tone or
