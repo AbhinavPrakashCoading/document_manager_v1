@@ -17,21 +17,27 @@ export function UploadZone({ schema }: { schema: ExamSchema }) {
   };
 
   const handleDownloadZip = async () => {
-    const validFiles = files.filter((file) => results[file.name]?.length === 0);
+  const validFiles = files.filter((file) => results[file.name]?.length === 0);
 
-    const fileWithMeta: FileWithMeta[] = validFiles.map((file) => {
-      const matchedReq = schema.requirements.find((r) =>
-        file.name.toLowerCase().includes(r.type.toLowerCase())
-      );
+  const fileWithMeta: FileWithMeta[] = validFiles.map((file) => {
+    const matchedReq = schema.requirements.find((r) =>
+      file.name.toLowerCase().includes(r.type.toLowerCase())
+    );
 
-      return {
-        file,
-        requirement: matchedReq!,
-        rollNumber,
-      };
-    });
+    return {
+      file,
+      requirement: matchedReq ?? {
+        type: 'Unknown',
+        format: 'Unknown',
+        maxSizeKB: 0,
+        dimensions: 'Unknown',
+        namingConvention: file.name,
+      },
+      rollNumber,
+    };
+  });
 
-    await generateZip(fileWithMeta, schema);
+  await generateZip(fileWithMeta, schema);
     toast.success('ZIP downloaded successfully!');
 
   };
