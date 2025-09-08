@@ -1,5 +1,5 @@
 import { scrapeSSC } from './engines/ssc';
-import fs from 'fs';
+import * as fs from 'fs';
 
 const args = process.argv.slice(2);
 const exam = args.find((arg) => arg.startsWith('--exam'))?.split('=')[1];
