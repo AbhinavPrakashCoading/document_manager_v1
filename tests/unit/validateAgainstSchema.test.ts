@@ -17,13 +17,24 @@ describe('validateFileAgainstRequirement', () => {
     const file = mockFile('image/png', 40);
     const result = validateFileAgainstRequirement(file, UPSC.requirements[0]);
     expect(result.valid).toBe(false);
-    expect(result.errors).toContain('Invalid format: expected JPEG, got PNG');
+    expect(result.errors).toContain(
+      `❌ test.jpg is of type image/png, expected ${UPSC.requirements[0].format}`
+    );
   });
 
   it('should fail for oversized file', () => {
     const file = mockFile('image/jpeg', 80);
     const result = validateFileAgainstRequirement(file, UPSC.requirements[0]);
     expect(result.valid).toBe(false);
-    expect(result.errors).toContain('File too large: 80KB > 50KB');
+    expect(result.errors).toContain(
+      `❌ test.jpg exceeds max size of ${UPSC.requirements[0].maxSizeKB}KB`
+    );
+  });
+
+  it('should return both errors for wrong format and size', () => {
+    const file = mockFile('image/png', 80);
+    const result = validateFileAgainstRequirement(file, UPSC.requirements[0]);
+    expect(result.valid).toBe(false);
+    expect(result.errors.length).toBe(2);
   });
 });
