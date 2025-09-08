@@ -1,30 +1,51 @@
 import { SSCConfig } from '../../config/ssc';
-import axios from 'axios';
-import cheerio from 'cheerio';
+import { sscRegistry } from '../schema/ssc';
 
 export async function scrapeSSC() {
-  const res = await axios.get(SSCConfig.url);
-  const $ = cheerio.load(res.data);
+  try {
+    // Check for updates if it's been more than checkIntervalHours
+    const lastChecked = SSCConfig.updateConfig.lastChecked ? new Date(SSCConfig.updateConfig.lastChecked) : null;
+    const hoursElapsed = lastChecked ? (Date.now() - lastChecked.getTime()) / (1000 * 60 * 60) : Infinity;
+    
+    if (hoursElapsed >= SSCConfig.updateConfig.checkIntervalHours) {
+      await SSCConfig.updateConfig.checkForUpdates();
+    }
 
-  const photoText = $(SSCConfig.selectors.photo).text().trim();
-  const signatureText = $(SSCConfig.selectors.signature).text().trim();
+    // Get the latest requirements (will use fallback if main requirements are unavailable)
+    const requirements = SSCConfig.requirements || sscRegistry.fallback.requirements;
+    
+    return [
+      {
+        ...requirements.photo,
+        raw: JSON.stringify(requirements.photo.additional)
+      },
+      {
+        ...requirements.signature,
+        raw: JSON.stringify(requirements.signature.additional)
+      },
+      {
+        ...requirements.documents,
+        raw: JSON.stringify(requirements.documents.required)
+      }
+    ];
 
-  return [
-    {
-      type: 'Photo',
-      format: SSCConfig.expected.format,
-      maxSizeKB: SSCConfig.expected.maxSizeKB,
-      dimensions: SSCConfig.expected.dimensions,
-      namingConvention: 'photo.jpg',
-      raw: photoText,
-    },
-    {
-      type: 'Signature',
-      format: SSCConfig.expected.format,
-      maxSizeKB: SSCConfig.expected.maxSizeKB,
-      dimensions: SSCConfig.expected.dimensions,
-      namingConvention: 'signature.jpg',
-      raw: signatureText,
-    },
-  ];
+    // Find notices related to exams/applications
+    return [
+      {
+        ...SSCConfig.requirements.photo,
+        raw: JSON.stringify(SSCConfig.requirements.photo.additional)
+      },
+      {
+        ...SSCConfig.requirements.signature,
+        raw: JSON.stringify(SSCConfig.requirements.signature.additional)
+      },
+      {
+        ...SSCConfig.requirements.documents,
+        raw: JSON.stringify(SSCConfig.requirements.documents.required)
+      }
+    ];
+  } catch (err) {
+    console.error('SSC scrape failed:', err);
+    return [];
+  }
 }
