@@ -4,12 +4,15 @@ import { useState, useEffect } from 'react';
 import { useUpload } from '@/features/upload/useUpload';
 import { ExamSchema } from '@/features/exam/examSchema';
 import { generateZip, FileWithMeta } from '@/features/package/zipService';
+import { ZipPreviewModal } from './ZipPreviewModal';
 import toast from 'react-hot-toast';
 
 export function UploadZone({ schema }: { schema: ExamSchema }) {
   const { files, results, handleUpload } = useUpload(schema);
   const [rollNumber, setRollNumber] = useState('');
   const [history, setHistory] = useState<string[]>([]);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewFiles, setPreviewFiles] = useState<FileWithMeta[]>([]);
 
   useEffect(() => {
     const cached = localStorage.getItem('uploadHistory');
@@ -28,7 +31,7 @@ export function UploadZone({ schema }: { schema: ExamSchema }) {
     }
   };
 
-  const handleDownloadZip = async () => {
+  const handleDownloadZip = () => {
     const validFiles = files.filter((file) => results[file.name]?.length === 0);
 
     const fileWithMeta: FileWithMeta[] = validFiles.map((file) => {
@@ -49,8 +52,8 @@ export function UploadZone({ schema }: { schema: ExamSchema }) {
       };
     });
 
-    await generateZip(fileWithMeta, schema);
-    toast.success('ZIP downloaded successfully!');
+    setPreviewFiles(fileWithMeta);
+    setShowPreview(true);
   };
 
   return (
@@ -95,7 +98,7 @@ export function UploadZone({ schema }: { schema: ExamSchema }) {
             rollNumber ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 cursor-not-allowed'
           }`}
         >
-          Download ZIP
+          Preview ZIP
         </button>
       )}
 
@@ -108,6 +111,18 @@ export function UploadZone({ schema }: { schema: ExamSchema }) {
             ))}
           </ul>
         </details>
+      )}
+
+      {showPreview && (
+        <ZipPreviewModal
+          files={previewFiles}
+          onConfirm={async () => {
+            await generateZip(previewFiles, schema);
+            toast.success('ZIP downloaded successfully!');
+            setShowPreview(false);
+          }}
+          onCancel={() => setShowPreview(false)}
+        />
       )}
     </div>
   );
