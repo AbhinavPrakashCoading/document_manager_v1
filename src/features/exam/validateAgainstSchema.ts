@@ -1,27 +1,22 @@
-import { DocumentRequirement } from './examSchema';
-
-export type ValidationResult = {
-  valid: boolean;
-  errors: string[];
-};
-
 export function validateFileAgainstRequirement(
   file: File,
-  requirement: DocumentRequirement
-): ValidationResult {
+  requirement: {
+    format: string;
+    maxSizeKB: number;
+    dimensions: string;
+    namingConvention: string;
+  }
+): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
 
-  const fileFormat = file.type.split('/')[1].toUpperCase();
-  const normalizeFormat = (format: string) =>
-    format.toUpperCase().replace('JPEG', 'JPG');
+  const maxBytes = requirement.maxSizeKB * 1024;
 
-  if (normalizeFormat(fileFormat) !== normalizeFormat(requirement.format)) {
-    errors.push(`Invalid format: expected ${requirement.format}, got ${fileFormat}`);
+  if (file.size > maxBytes) {
+    errors.push(`❌ ${file.name} exceeds max size of ${requirement.maxSizeKB}KB`);
   }
 
-  const sizeKB = file.size / 1024;
-  if (sizeKB > requirement.maxSizeKB) {
-    errors.push(`File too large: ${Math.round(sizeKB)}KB > ${requirement.maxSizeKB}KB`);
+  if (!file.type.toLowerCase().includes(requirement.format.toLowerCase())) {
+    errors.push(`❌ ${file.name} is of type ${file.type}, expected ${requirement.format}`);
   }
 
   return {

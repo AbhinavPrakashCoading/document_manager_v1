@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 export function ExamSelector({ onSchemaFetched }: { onSchemaFetched: (schema: any) => void }) {
   const [selectedExam, setSelectedExam] = useState('');
+  const [mode, setMode] = useState<'live' | 'versioned' | 'fallback'>('versioned');
 
   const exams = [
     { id: 'upsc', name: 'UPSC', icon: '🗳️' },
@@ -17,7 +18,7 @@ export function ExamSelector({ onSchemaFetched }: { onSchemaFetched: (schema: an
     const res = await fetch('/api/exam', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ examId: selectedExam }),
+      body: JSON.stringify({ examId: selectedExam, mode }),
     });
 
     const schema = await res.json();
@@ -40,6 +41,19 @@ export function ExamSelector({ onSchemaFetched }: { onSchemaFetched: (schema: an
             {exam.icon} {exam.name}
           </button>
         ))}
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm">Schema Mode:</label>
+        <select
+          value={mode}
+          onChange={(e) => setMode(e.target.value as any)}
+          className="border px-2 py-1 rounded w-full"
+        >
+          <option value="live">Live Scrape</option>
+          <option value="versioned">Latest Version</option>
+          <option value="fallback">Fallback</option>
+        </select>
       </div>
 
       <button
