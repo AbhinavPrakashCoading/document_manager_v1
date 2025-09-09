@@ -62,14 +62,35 @@ export function UploadZone({ schema }: { schema: ExamSchema }) {
     document: '📄',
   };
 
+  const groupErrorsByType = (results: Record<string, string[]>) => {
+    const grouped: Record<string, string[]> = {
+      size: [],
+      format: [],
+      unknown: [],
+    };
+
+    for (const [fileName, errors] of Object.entries(results)) {
+      for (const err of errors) {
+        if (err.includes('exceeds max size')) grouped.size.push(fileName);
+        else if (err.includes('expected') && err.includes('type')) grouped.format.push(fileName);
+        else grouped.unknown.push(fileName);
+      }
+    }
+
+    return grouped;
+  };
+
+  const errorGroups = groupErrorsByType(results);
+  const totalErrors = Object.values(errorGroups).reduce((acc, arr) => acc + arr.length, 0);
+
   return (
-    <div className="space-y-4">
+    <div className="max-w-md mx-auto px-4 pb-24 space-y-4">
       <input
         type="text"
         placeholder="Enter Roll Number"
         value={rollNumber}
         onChange={(e) => setRollNumber(e.target.value)}
-        className="border px-2 py-1 rounded w-full text-sm"
+        className="border px-2 py-2 rounded w-full text-sm"
       />
 
       <input
@@ -78,6 +99,22 @@ export function UploadZone({ schema }: { schema: ExamSchema }) {
         onChange={onFileChange}
         className="block w-full text-sm"
       />
+
+      {totalErrors > 0 && (
+        <div className="bg-red-50 border border-red-300 rounded p-4 text-sm space-y-2">
+          <h3 className="font-semibold text-red-700">Validation Summary</h3>
+          <ul className="list-disc ml-4 text-red-600">
+            {Object.entries(errorGroups).map(([type, files]) => (
+              <li key={type}>
+                {type === 'size' && '📏 Size Violations'}
+                {type === 'format' && '🧬 Format Mismatches'}
+                {type === 'unknown' && '❓ Unknown Issues'}
+                — {files.length} file(s)
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="space-y-2">
         {files.map((file) => {
@@ -90,56 +127,44 @@ export function UploadZone({ schema }: { schema: ExamSchema }) {
           const icon = iconMap[matchedReq?.type.toLowerCase() || 'document'];
 
           return (
-            <div
+            <details
               key={file.name}
-              className={`border p-3 rounded space-y-1 ${
+              className={`border rounded ${
                 isValid ? 'border-green-500' : 'border-red-500'
               }`}
             >
-              <div className="flex items-center justify-between">
-                <strong className="text-sm">
-                  {icon} {file.name}
-                </strong>
+              <summary className="flex justify-between items-center px-3 py-2 text-sm cursor-pointer">
+                <span>{icon} {file.name}</span>
                 <span className={`text-xs ${isValid ? 'text-green-600' : 'text-red-600'}`}>
                   {isValid ? '✅ Valid' : '❌ Errors'}
                 </span>
-              </div>
+              </summary>
 
-              {matchedReq && (
-                <ul className="text-xs text-gray-600 ml-1 space-y-1">
-                  <li>Type: {matchedReq.type}</li>
-                  <li>Format: {matchedReq.format}</li>
-                  <li>Max Size: {matchedReq.maxSizeKB}KB</li>
-                  <li>Dimensions: {matchedReq.dimensions}</li>
-                </ul>
-              )}
-
-              {errors.length > 0 && (
-                <details className="text-xs text-red-600 mt-2">
-                  <summary className="cursor-pointer">View Errors</summary>
-                  <ul className="list-disc ml-4">
-                    {errors.map((err, idx) => (
-                      <li key={idx}>{err}</li>
-                    ))}
+              <div className="px-4 py-2 space-y-1 text-xs text-gray-700">
+                {matchedReq && (
+                  <ul className="space-y-1">
+                    <li>Type: {matchedReq.type}</li>
+                    <li>Format: {matchedReq.format}</li>
+                    <li>Max Size: {matchedReq.maxSizeKB}KB</li>
+                    <li>Dimensions: {matchedReq.dimensions}</li>
                   </ul>
-                </details>
-              )}
-            </div>
+                )}
+
+                {errors.length > 0 && (
+                  <div className="text-red-600 mt-2">
+                    <strong>Errors:</strong>
+                    <ul className="list-disc ml-4">
+                      {errors.map((err, idx) => (
+                        <li key={idx}>{err}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </details>
           );
         })}
       </div>
-
-      {files.length > 0 && (
-        <button
-          onClick={handleDownloadZip}
-          disabled={!rollNumber}
-          className={`w-full sm:w-auto px-4 py-2 rounded text-white ${
-            rollNumber ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 cursor-not-allowed'
-          }`}
-        >
-          Preview ZIP
-        </button>
-      )}
 
       {history.length > 0 && (
         <details className="mt-4">
@@ -162,6 +187,20 @@ export function UploadZone({ schema }: { schema: ExamSchema }) {
           }}
           onCancel={() => setShowPreview(false)}
         />
+      )}
+
+      {files.length > 0 && (
+        <div className="fixed bottom-4 left-0 right-0 px-4 z-50">
+          <button
+            onClick={handleDownloadZip}
+            disabled={!rollNumber}
+            className={`w-full px-4 py-2 rounded text-white ${
+              rollNumber ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 cursor-not-allowed'
+            }`}
+          >
+            Preview ZIP
+          </button>
+        </div>
       )}
     </div>
   );

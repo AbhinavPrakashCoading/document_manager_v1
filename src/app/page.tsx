@@ -1,38 +1,34 @@
-"use client";
+'use client';
 
-import { useState } from 'react';
-import { ExamSelector } from '@/components/ExamSelector';
-import { UploadZone } from '@/components/UploadZone';
-import toast from 'react-hot-toast';
+import Link from 'next/link';
 
-
-export default function Home() {
-  const [schemas, setSchemas] = useState<any[]>([]);
-
-  const handleSchemaFetched = (schema: any) => {
-    setSchemas((prev) => [...prev, schema]);
-  };
-
+export default function LandingPage() {
   return (
-    <main className="p-4 space-y-6 max-w-md mx-auto">
-      <h1 className="text-xl font-bold">Document Manager</h1>
-      <ExamSelector onSchemaFetched={handleSchemaFetched} />
+    <main className="min-h-screen flex flex-col items-center justify-center px-6 py-12 space-y-8 bg-gray-50">
+      <h1 className="text-4xl font-bold text-center">
+        📄 ExamDoc Uploader
+      </h1>
 
-      {schemas.map((schema) => (
-  <div key={schema.examId} className="border p-4 rounded space-y-4">
-    <h2 className="font-semibold">{schema.examName}</h2>
-    <ul className="list-disc ml-4">
-      {schema.requirements.map((req: any, idx: number) => (
-        <li key={idx}>
-          {req.type} — {req.format}, max {req.maxSizeKB}KB, {req.dimensions}
-        </li>
-      ))}
-    </ul>
+      <p className="text-gray-600 text-center max-w-xl text-sm">
+        Upload your exam documents, validate them instantly, and package them for submission — all powered by a schema-aware engine.
+      </p>
 
-    <UploadZone schema={schema} />
-  </div>
-))}
+      <div className="flex gap-4 text-2xl">
+        <span title="SSC">📜</span>
+        <span title="UPSC">🗳️</span>
+        <span title="IELTS">🌍</span>
+      </div>
+
+      <Link
+        href="/app"
+        className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 text-sm"
+      >
+        Get Started
+      </Link>
+
+      <footer className="text-xs text-gray-500 pt-12">
+        Made by Abhinav • Powered by Registry Engine ⚙️
+      </footer>
     </main>
   );
-
 }
