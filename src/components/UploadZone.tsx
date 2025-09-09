@@ -56,6 +56,12 @@ export function UploadZone({ schema }: { schema: ExamSchema }) {
     setShowPreview(true);
   };
 
+  const iconMap: Record<string, string> = {
+    photo: '📷',
+    signature: '✍️',
+    document: '📄',
+  };
+
   return (
     <div className="space-y-4">
       <input
@@ -74,20 +80,53 @@ export function UploadZone({ schema }: { schema: ExamSchema }) {
       />
 
       <div className="space-y-2">
-        {files.map((file) => (
-          <div key={file.name} className="border p-2 rounded">
-            <strong>{file.name}</strong>
-            {results[file.name]?.length ? (
-              <ul className="text-red-600 list-disc ml-4 text-sm">
-                {results[file.name].map((err, idx) => (
-                  <li key={idx}>{err}</li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-green-600 text-sm">✅ Valid</p>
-            )}
-          </div>
-        ))}
+        {files.map((file) => {
+          const matchedReq = schema.requirements.find((r) =>
+            file.name.toLowerCase().includes(r.type.toLowerCase())
+          );
+
+          const errors = results[file.name] || [];
+          const isValid = errors.length === 0;
+          const icon = iconMap[matchedReq?.type.toLowerCase() || 'document'];
+
+          return (
+            <div
+              key={file.name}
+              className={`border p-3 rounded space-y-1 ${
+                isValid ? 'border-green-500' : 'border-red-500'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <strong className="text-sm">
+                  {icon} {file.name}
+                </strong>
+                <span className={`text-xs ${isValid ? 'text-green-600' : 'text-red-600'}`}>
+                  {isValid ? '✅ Valid' : '❌ Errors'}
+                </span>
+              </div>
+
+              {matchedReq && (
+                <ul className="text-xs text-gray-600 ml-1 space-y-1">
+                  <li>Type: {matchedReq.type}</li>
+                  <li>Format: {matchedReq.format}</li>
+                  <li>Max Size: {matchedReq.maxSizeKB}KB</li>
+                  <li>Dimensions: {matchedReq.dimensions}</li>
+                </ul>
+              )}
+
+              {errors.length > 0 && (
+                <details className="text-xs text-red-600 mt-2">
+                  <summary className="cursor-pointer">View Errors</summary>
+                  <ul className="list-disc ml-4">
+                    {errors.map((err, idx) => (
+                      <li key={idx}>{err}</li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {files.length > 0 && (
