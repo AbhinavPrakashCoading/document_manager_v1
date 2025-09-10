@@ -1,10 +1,14 @@
 'use client';
 
 import Link from 'next/link';
+import { WelcomeToast } from '@/components/WelcomeToast';
+import { toast } from 'react-hot-toast';
 
 export default function LandingPage() {
+
   return (
     <main className="min-h-screen flex flex-col items-center justify-center px-6 py-12 space-y-8 bg-gray-50">
+      <WelcomeToast />
       <h1 className="text-4xl font-bold text-center">
         📄 ExamDoc Uploader
       </h1>
@@ -25,6 +29,21 @@ export default function LandingPage() {
       >
         Get Started
       </Link>
+
+      <button
+        onClick={() =>
+          toast.success(
+            '📄 ExamDoc helps you upload exam documents, validate them instantly, and package them into a submission-ready ZIP — all powered by a schema-aware engine tailored to SSC, UPSC, and IELTS workflows.',
+            {
+              duration: 8000,
+              position: 'top-center',
+            }
+          )
+        }
+        className="text-sm text-blue-600 underline hover:text-blue-800"
+      >
+        How to use
+      </button>
 
       <footer className="text-xs text-gray-500 pt-12">
         Made by Abhinav • Powered by Registry Engine ⚙️
