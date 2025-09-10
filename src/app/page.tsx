@@ -20,7 +20,7 @@ export default function LandingPage() {
       </div>
 
       <Link
-        href="/app"
+        href="/select"
         className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 text-sm"
       >
         Get Started

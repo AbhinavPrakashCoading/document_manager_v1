@@ -1,0 +1,45 @@
+{
+  "title": "UPSC Document Requirements",
+  "type": "object",
+  "required": ["personalInfo", "documents"],
+  "properties": {
+    "personalInfo": {
+      "type": "object",
+      "required": ["name", "dateOfBirth", "registrationNumber"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Full name as per records"
+        },
+        "dateOfBirth": {
+          "type": "string",
+          "format": "date",
+          "description": "Date of birth in YYYY-MM-DD format"
+        },
+        "registrationNumber": {
+          "type": "string",
+          "description": "UPSC registration number"
+        }
+      }
+    },
+    "documents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "file"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["photo", "signature", "idProof", "ageProof", "educationCertificate", "experienceCertificate"],
+            "description": "Type of document"
+          },
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "description": "The document file"
+          }
+        }
+      }
+    }
+  }
+}

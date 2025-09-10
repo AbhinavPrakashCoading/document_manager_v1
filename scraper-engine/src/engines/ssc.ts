@@ -1,47 +1,37 @@
 import { SSCConfig } from '../../config/ssc';
-import { sscRegistry } from '../schema/ssc';
+import axios from 'axios';
+import cheerio from 'cheerio';
 
-export async function scrapeSSC(log: (msg: string) => void = () => {}) {
+export async function scrapeSSC() {
   try {
-    log('🔍 Checking update interval...');
-    const lastChecked = SSCConfig.updateConfig.lastChecked
-      ? new Date(SSCConfig.updateConfig.lastChecked)
-      : null;
+    const res = await axios.get(SSCConfig.url);
+    const $ = cheerio.load(res.data);
 
-    const hoursElapsed = lastChecked
-      ? (Date.now() - lastChecked.getTime()) / (1000 * 60 * 60)
-      : Infinity;
-
-    log(`⏱️ Hours since last check: ${hoursElapsed.toFixed(2)}`);
-
-    if (hoursElapsed >= SSCConfig.updateConfig.checkIntervalHours) {
-      log('🔄 Triggering update check...');
-      await SSCConfig.updateConfig.checkForUpdates();
-      log('✅ Update check completed.');
-    }
-
-    const requirements = SSCConfig.requirements || sscRegistry.fallback.requirements;
-    log(`📦 Using ${SSCConfig.requirements ? 'live' : 'fallback'} requirements`);
+    const photoText = $(SSCConfig.selectors.photo).text().trim();
+    const signatureText = $(SSCConfig.selectors.signature).text().trim();
 
     const schema = [
       {
-        ...requirements.photo,
-        raw: JSON.stringify(requirements.photo.additional),
+        type: 'Photo',
+        format: SSCConfig.expected.format,
+        maxSizeKB: SSCConfig.expected.maxSizeKB,
+        dimensions: SSCConfig.expected.dimensions,
+        namingConvention: 'photo.jpg',
+        raw: photoText,
       },
       {
-        ...requirements.signature,
-        raw: JSON.stringify(requirements.signature.additional),
-      },
-      {
-        ...requirements.documents,
-        raw: JSON.stringify(requirements.documents.required),
+        type: 'Signature',
+        format: SSCConfig.expected.format,
+        maxSizeKB: SSCConfig.expected.maxSizeKB,
+        dimensions: SSCConfig.expected.dimensions,
+        namingConvention: 'signature.jpg',
+        raw: signatureText,
       },
     ];
 
-    log(`✅ Scraped ${schema.length} requirement blocks`);
     return schema;
-  } catch (err: any) {
-    log(`❌ SSC scrape failed: ${err.message}`);
+  } catch (err) {
+    console.error('SSC scrape failed:', err);
     return [];
   }
 }
