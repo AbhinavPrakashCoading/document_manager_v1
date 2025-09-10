@@ -44,6 +44,18 @@ export default function UploadPage() {
       <h1 className="text-xl font-semibold text-center mb-6">
         📄 Upload Documents for {schema.examName}
       </h1>
+
+      <section className="max-w-md mx-auto mb-6 text-sm bg-white p-4 rounded shadow">
+        <h2 className="font-semibold mb-2">📋 Requirements Preview</h2>
+        <ul className="list-disc ml-4 space-y-1 text-gray-700">
+          {schema.requirements.map((req) => (
+            <li key={req.type}>
+              <strong>{req.type}</strong>: {req.format}, max {req.maxSizeKB}KB, {req.dimensions}
+            </li>
+          ))}
+        </ul>
+      </section>
+
       <UploadZone schema={schema} />
     </main>
   );

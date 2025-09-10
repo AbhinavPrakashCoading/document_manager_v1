@@ -2,6 +2,8 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import Link from 'next/link';
+import toast from 'react-hot-toast';
 
 const exams = [
   { id: 'ssc', label: 'SSC', icon: '📜' },
@@ -14,15 +16,18 @@ export default function ExamSelectorPage() {
 
   const handleSelect = (examId: string) => {
     localStorage.setItem('selectedExam', examId);
-    router.push(`/upload?exam=${examId}`);
+    router.push('/app');
   };
 
   useEffect(() => {
-    const cached = localStorage.getItem('selectedExam');
-    if (cached) {
-      router.prefetch(`/upload?exam=${cached}`);
-    }
-  }, [router]);
+    toast.success(
+      '📄 ExamDoc helps you upload exam documents, validate them instantly, and package them into a submission-ready ZIP — all powered by a schema-aware engine tailored to SSC, UPSC, and IELTS workflows.',
+      {
+        duration: 8000,
+        position: 'top-center',
+      }
+    );
+  }, []);
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center px-6 py-12 space-y-8 bg-gray-50">
@@ -43,6 +48,28 @@ export default function ExamSelectorPage() {
           </button>
         ))}
       </div>
+
+      <Link
+        href="/app"
+        className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 text-sm"
+      >
+        Start Uploading
+      </Link>
+
+      <button
+        onClick={() =>
+          toast.success(
+            '📄 ExamDoc helps you upload exam documents, validate them instantly, and package them into a submission-ready ZIP — all powered by a schema-aware engine tailored to SSC, UPSC, and IELTS workflows.',
+            {
+              duration: 8000,
+              position: 'top-center',
+            }
+          )
+        }
+        className="text-sm text-blue-600 underline hover:text-blue-800"
+      >
+        How to use
+      </button>
 
       <footer className="text-xs text-gray-500 pt-12">
         Made by Abhinav • Schema-aware engine ⚙️

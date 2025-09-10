@@ -115,6 +115,7 @@
     "semantic-release": "^22.0.12",
     "storybook": "^8.6.12",
     "tailwindcss": "^4.1.5",
+    "ts-node": "^10.9.2",
     "tsc": "^2.0.4",
     "tsx": "^4.20.5",
     "typed-query-selector": "^2.12.0",
