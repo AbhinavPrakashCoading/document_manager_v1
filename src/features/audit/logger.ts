@@ -2,13 +2,16 @@ export function logDecision(fileName: string, mode: 'strict' | 'fallback', reaso
   console.log(`[VALIDATION] ${fileName} → ${mode.toUpperCase()} MODE: ${reason}`);
 }
 
-export async function persistAudit(entry: {
+export interface AuditEntry {
   file: string;
   rollNumber: string;
   result: string;
   mode: string;
   errors?: { type: string; message: string }[];
-}) {
+  meta?: Record<string, any>;
+}
+
+export async function persistAudit(entry: AuditEntry) {
   try {
     const response = await fetch('/api/audit', {
       method: 'POST',

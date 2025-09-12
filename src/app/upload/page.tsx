@@ -2,7 +2,8 @@
 
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { UploadZone } from '@/components/UploadZone';
+import { UploadZone } from '@/components/upload-page/UploadZone';
+import { RequirementsPanel } from '@/components/upload-page/RequirementsPanel';
 import { ExamSchema } from '@/features/exam/examSchema';
 
 export default function UploadPage() {
@@ -42,20 +43,10 @@ export default function UploadPage() {
   return (
     <main className="min-h-screen bg-gray-50 py-8 px-4">
       <h1 className="text-xl font-semibold text-center mb-6">
-        📄 Upload Documents for {schema.examName}
+        📄 Upload Documents for {schema.title}
       </h1>
 
-      <section className="max-w-md mx-auto mb-6 text-sm bg-white p-4 rounded shadow">
-        <h2 className="font-semibold mb-2">📋 Requirements Preview</h2>
-        <ul className="list-disc ml-4 space-y-1 text-gray-700">
-          {schema.requirements.map((req) => (
-            <li key={req.type}>
-              <strong>{req.type}</strong>: {req.format}, max {req.maxSizeKB}KB, {req.dimensions}
-            </li>
-          ))}
-        </ul>
-      </section>
-
+      <RequirementsPanel schema={schema} />
       <UploadZone schema={schema} />
     </main>
   );

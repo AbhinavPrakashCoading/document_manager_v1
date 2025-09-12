@@ -1,1 +1,22 @@
-[{"file":"test.pdf","rollNumber":"12345","timestamp":"2025-09-10T10:00:00.000Z","mode":"strict","result":"success"}]
+[
+  {
+    "file": "test.pdf",
+    "rollNumber": "12345",
+    "timestamp": "2025-09-10T10:00:00.000Z",
+    "mode": "strict",
+    "result": "success"
+  },
+  {
+    "timestamp": "2025-09-12T15:42:38.707Z",
+    "file": "submission.zip",
+    "rollNumber": "unknown",
+    "result": "ZIP generated",
+    "mode": "packaging",
+    "errors": [],
+    "meta": {
+      "estimatedSizeKB": 168,
+      "schemaVersion": "unknown",
+      "format": "zip"
+    }
+  }
+]

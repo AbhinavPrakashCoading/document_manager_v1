@@ -1,16 +1,50 @@
-export type DocumentRequirement = {
-  type: string;
-  format: 'JPG' | 'JPEG' | 'PNG' | 'PDF';
-  maxSizeKB: number;
-  dimensions?: string;
-  namingConvention?: string;
-};
+import { DocumentRequirement } from './types';
 
-export type ExamSchema = {
+export interface ExamSchema {
   examId: string;
   examName: string;
   requirements: DocumentRequirement[];
-};
+  properties?: {
+    personalInfo?: {
+      type: 'object';
+      required: string[];
+      properties: {
+        name: {
+          type: 'string';
+          description: string;
+        };
+        dateOfBirth: {
+          type: 'string';
+          format: 'date';
+          description: string;
+        };
+        registrationNumber: {
+          type: 'string';
+          description: string;
+        };
+      };
+    };
+    documents?: {
+      type: 'array';
+      items: {
+        type: 'object';
+        required: string[];
+        properties: {
+          type: {
+            type: 'string';
+            enum: string[];
+            description: string;
+          };
+          file: {
+            type: 'string';
+            format: 'binary';
+            description: string;
+          };
+        };
+      };
+    };
+  };
+}
 
 export const UPSC: ExamSchema = {
   examId: 'upsc',

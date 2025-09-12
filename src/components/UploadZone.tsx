@@ -6,6 +6,25 @@ import { ExamSchema } from '@/features/exam/examSchema';
 import { generateZip, FileWithMeta } from '@/features/package/zipService';
 import { ZipPreviewModal } from './ZipPreviewModal';
 import toast from 'react-hot-toast';
+import { transformFile } from '@/features/transform/transformFile';
+
+interface DocumentRequirement {
+  type: string;
+  format: string;
+  maxSizeKB: number;
+  dimensions?: string;
+  namingConvention?: string;
+}
+
+function convertSchemaToRequirements(schema: ExamSchema): DocumentRequirement[] {
+  return schema.properties.documents.items.properties.type.enum.map((type) => ({
+    type,
+    format: 'image/jpeg',  // Default format
+    maxSizeKB: 1024,      // Default max size
+    dimensions: '200x200', // Default dimensions
+    namingConvention: `${type.toLowerCase()}_[timestamp]`
+  }));
+}
 
 export function UploadZone({ schema }: { schema: ExamSchema }) {
   const { files, results, handleUpload } = useUpload(schema);
@@ -13,6 +32,7 @@ export function UploadZone({ schema }: { schema: ExamSchema }) {
   const [history, setHistory] = useState<string[]>([]);
   const [showPreview, setShowPreview] = useState(false);
   const [previewFiles, setPreviewFiles] = useState<FileWithMeta[]>([]);
+  const requirements = convertSchemaToRequirements(schema);
 
   useEffect(() => {
     const cached = localStorage.getItem('uploadHistory');
@@ -24,10 +44,28 @@ export function UploadZone({ schema }: { schema: ExamSchema }) {
     setHistory(files.map((f) => f.name));
   }, [files]);
 
-  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files;
-    if (selected) {
-      Array.from(selected).forEach((file) => handleUpload(file));
+    if (!selected) return;
+
+    for (const file of Array.from(selected)) {
+      const matchedReq = requirements.find((r) =>
+        file.name.toLowerCase().includes(r.type.toLowerCase())
+      );
+
+      if (!matchedReq) {
+        toast.error(`❌ Unknown file type: ${file.name}`);
+        continue;
+      }
+
+      try {
+        const transformed = await transformFile(file, matchedReq);
+        handleUpload(transformed);
+        toast.success(`✅ ${file.name} transformed and uploaded`);
+      } catch (err) {
+        console.error(err);
+        toast.error(`⚠️ Failed to process ${file.name}`);
+      }
     }
   };
 
@@ -35,7 +73,7 @@ export function UploadZone({ schema }: { schema: ExamSchema }) {
     const validFiles = files.filter((file) => results[file.name]?.length === 0);
 
     const fileWithMeta: FileWithMeta[] = validFiles.map((file) => {
-      const matchedReq = schema.requirements.find((r) =>
+      const matchedReq = requirements.find((r) =>
         file.name.toLowerCase().includes(r.type.toLowerCase())
       );
 
@@ -118,7 +156,7 @@ export function UploadZone({ schema }: { schema: ExamSchema }) {
 
       <div className="space-y-2">
         {files.map((file) => {
-          const matchedReq = schema.requirements.find((r) =>
+          const matchedReq = requirements.find((r) =>
             file.name.toLowerCase().includes(r.type.toLowerCase())
           );
 
