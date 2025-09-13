@@ -8,21 +8,30 @@ import { ZipPreviewModal } from './ZipPreviewModal';
 import toast from 'react-hot-toast';
 import { transformFile } from '@/features/transform/transformFile';
 
-interface DocumentRequirement {
-  type: string;
-  format: string;
-  maxSizeKB: number;
-  dimensions?: string;
-  namingConvention?: string;
-}
+import { EnhancedDocumentRequirement } from '@/features/exam/examSchema';
 
-function convertSchemaToRequirements(schema: ExamSchema): DocumentRequirement[] {
-  return schema.properties.documents.items.properties.type.enum.map((type) => ({
-    type,
-    format: 'image/jpeg',  // Default format
-    maxSizeKB: 1024,      // Default max size
-    dimensions: '200x200', // Default dimensions
-    namingConvention: `${type.toLowerCase()}_[timestamp]`
+function convertSchemaToRequirements(schema: ExamSchema): EnhancedDocumentRequirement[] {
+  return schema.requirements.map(req => ({
+    ...req,
+    id: req.id || `${req.type.toLowerCase()}_${Date.now()}`,
+    displayName: req.displayName || req.type,
+    description: req.description || `Upload ${req.type.toLowerCase()}`,
+    aliases: req.aliases || [req.type.toLowerCase()],
+    category: req.category || 'other',
+    subjective: req.subjective || [],
+    validationRules: req.validationRules || [
+      {
+        type: 'strict',
+        rule: 'file_size_limit',
+        message: `File size must not exceed ${req.maxSizeKB}KB`,
+        field: req.type.toLowerCase(),
+        canOverride: false
+      }
+    ],
+    mandatory: req.mandatory ?? true,
+    examples: req.examples || [],
+    commonMistakes: req.commonMistakes || [],
+    helpText: req.helpText || `Upload a valid ${req.type.toLowerCase()}`
   }));
 }
 

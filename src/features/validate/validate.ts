@@ -1,13 +1,43 @@
-import { ExamSchema, Requirement } from '@/features/exam/examSchema';
-import { ValidationResult } from './types';
-import { config } from '@/config/validationConfig';
+import { ExamSchema } from '@/features/exam/examSchema';
+import { ValidationResult, ValidationRuleResult, ValidationMode } from './types';
 import { logDecision, persistAudit } from '@/features/audit/logger';
+
+// Default validation config
+const config = {
+  strictMode: true,
+  defaultFormat: 'image/jpeg',
+  defaultMaxSizeKB: 500,
+  defaultDimensions: '300x300'
+};
+
+function validateRule(file: File, rule: { type: ValidationMode; rule: string; message: string }): ValidationRuleResult {
+  switch (rule.rule) {
+    case 'file_size_limit':
+      const sizeMatch = rule.message.match(/(\d+)KB/);
+      if (sizeMatch) {
+        const maxSize = parseInt(sizeMatch[1]) * 1024;
+        if (file.size > maxSize) {
+          return { valid: false, message: rule.message };
+        }
+      }
+      break;
+    case 'format_check':
+      if (!file.type.toLowerCase().includes(rule.message.toLowerCase())) {
+        return { valid: false, message: rule.message };
+      }
+      break;
+  }
+  return { valid: true, message: '' };
+}
 
 export function validateFile(file: File, schema: ExamSchema, rollNumber: string): ValidationResult[] {
   const errors: ValidationResult[] = [];
+  const warnings: ValidationResult[] = [];
 
+  // Try matching by name and aliases
   const matchedReq = schema.requirements.find((r) =>
-    file.name.toLowerCase().includes(r.type.toLowerCase())
+    file.name.toLowerCase().includes(r.type.toLowerCase()) ||
+    r.aliases?.some(alias => file.name.toLowerCase().includes(alias.toLowerCase()))
   );
 
   if (!matchedReq) {
@@ -17,6 +47,20 @@ export function validateFile(file: File, schema: ExamSchema, rollNumber: string)
     return errors;
   }
 
+  // Apply validation rules in order: strict -> soft -> warning
+  matchedReq.validationRules?.forEach(rule => {
+    const validationResult = validateRule(file, rule);
+    if (!validationResult.valid) {
+      if (rule.type === 'strict') {
+        errors.push({ type: rule.rule, message: validationResult.message });
+      } else {
+        warnings.push({ type: rule.rule, message: validationResult.message });
+      }
+      logDecision(file.name, rule.type === 'strict' ? 'strict' : 'fallback', `${rule.rule}: ${validationResult.message}`);
+    }
+  });
+
+  // Legacy validation as fallback
   const { format, maxSizeKB, dimensions } = matchedReq;
   const strict = config.strictMode ?? true;
   const fallbackFormat = config.defaultFormat ?? 'image/jpeg';
