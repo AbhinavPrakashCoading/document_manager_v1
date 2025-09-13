@@ -7,7 +7,7 @@ export async function generateZip(
   files: FileWithMeta[],
   schema: ExamSchema,
   options?: { format?: 'zip' | 'tar'; rollNumber?: string }
-): Promise<void> {
+): Promise<{ success: boolean; error?: string }> {
   const zip = new JSZip();
   let totalSize = 0;
 
@@ -48,6 +48,18 @@ export async function generateZip(
 
   persistAudit({
     file: 'submission.zip',
+    rollNumber: options?.rollNumber ?? 'unknown',
+    result: 'ZIP generated',
+    mode: 'packaging',
+    errors: [],
+    meta: {
+      estimatedSizeKB: estimatedKB,
+      schemaVersion: schema.version ?? 'unknown',
+      format: options?.format ?? 'zip'
+    }
+  });
+  
+  return { success: true };
     rollNumber: options?.rollNumber ?? 'unknown',
     result: 'ZIP generated',
     mode: 'packaging',

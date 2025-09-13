@@ -8,7 +8,7 @@ interface ValidationRequirement {
 export function validateFileAgainstRequirement(
   file: File,
   requirement: ValidationRequirement
-): { valid: boolean; errors: string[] } {
+): { valid: boolean; errors: string[]; warnings?: string[] } {
   const errors: string[] = [];
 
   // Check size if maxSizeKB is specified
