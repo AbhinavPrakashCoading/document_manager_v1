@@ -47,8 +47,8 @@ export async function generateZip(
   console.log(`[ZIP] Estimated size: ${estimatedKB}KB`);
 
   try {
-    // Log the operation
-    await persistAudit({
+    // Log the operation (non-blocking)
+    persistAudit({
       file: 'submission.zip',
       rollNumber: options?.rollNumber ?? 'unknown',
       result: 'ZIP generated',
@@ -59,6 +59,8 @@ export async function generateZip(
         schemaVersion: schema.version ?? 'unknown',
         format: options?.format ?? 'zip'
       }
+    }).catch(err => {
+      console.warn('[ZIP] Audit logging failed, continuing with download:', err);
     });
 
     // Generate zip file
@@ -67,6 +69,16 @@ export async function generateZip(
       compression: 'DEFLATE',
       compressionOptions: { level: 9 }
     });
+
+    // Trigger download
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${options?.rollNumber || 'submission'}_documents.zip`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 
     // Warn if tar format was requested but not supported
     if (options?.format === 'tar') {

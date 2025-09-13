@@ -8,6 +8,7 @@ import { ProcessedPreview } from '@/components/confirm-page/ProcessedPreview';
 import { DownloadZipButton } from '@/components/confirm-page/DownloadZipButton';
 import { transformFile } from '@/features/transform/transformFile';
 import { DocumentRequirement } from '@/features/exam/types';
+import { staticSchemas } from '@/features/exam/staticSchemas';
 
 // Declare global window interface
 declare global {
@@ -33,8 +34,16 @@ export default function ConfirmPage() {
     // Load and set schema
     const loadSchema = async () => {
       try {
-        const mod = await import(`@/schemas/${examId}.json`);
-        setSchema(mod.default.requirements || []);
+        // Load from enhanced static schemas instead of legacy JSON
+        const schemaData = staticSchemas[examId];
+        if (schemaData) {
+          setSchema(schemaData.requirements || []);
+        } else {
+          console.error(`Enhanced schema not found for ${examId}`);
+          // Fallback to legacy JSON schema
+          const mod = await import(`@/schemas/${examId}.json`);
+          setSchema(mod.default.requirements || []);
+        }
       } catch (err) {
         console.error('Failed to load schema:', err);
         router.replace('/select');

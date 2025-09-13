@@ -18,5 +18,18 @@
       "schemaVersion": "unknown",
       "format": "zip"
     }
+  },
+  {
+    "timestamp": "2025-09-13T08:35:59.668Z",
+    "file": "submission.zip",
+    "rollNumber": "unknown",
+    "result": "ZIP generated",
+    "mode": "packaging",
+    "errors": [],
+    "meta": {
+      "estimatedSizeKB": 4,
+      "schemaVersion": "unknown",
+      "format": "zip"
+    }
   }
 ]

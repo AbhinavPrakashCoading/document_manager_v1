@@ -4,6 +4,8 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { UploadZone } from '@/components/upload-page/UploadZone';
 import { RequirementsPanel } from '@/components/upload-page/RequirementsPanel';
+import { getSchema } from '@/lib/schemaRegistry';
+import { staticSchemas } from '@/features/exam/staticSchemas';
 import { ExamSchema } from '@/features/exam/examSchema';
 
 const validExams = ['ssc', 'upsc', 'ielts'];
@@ -25,8 +27,16 @@ export default function UploadPageContent() {
     
     const loadSchema = async () => {
       try {
-        const mod = await import(`@/schemas/${examId}.json`);
-        setSchema(mod.default);
+        // Load from enhanced static schemas instead of legacy JSON
+        const schemaData = staticSchemas[examId];
+        if (schemaData) {
+          setSchema(schemaData);
+        } else {
+          console.error(`Enhanced schema not found for ${examId}`);
+          // Fallback to legacy JSON schema
+          const mod = await import(`@/schemas/${examId}.json`);
+          setSchema(mod.default);
+        }
       } catch (err) {
         console.error(`Schema load failed for ${examId}:`, err);
         router.replace('/select');
@@ -47,7 +57,7 @@ export default function UploadPageContent() {
   return (
     <main className="min-h-screen bg-gray-50 py-8 px-4">
       <h1 className="text-xl font-semibold text-center mb-6">
-        📄 Upload Documents for {schema.title}
+        📄 Upload Documents for {schema.examName}
       </h1>
 
       <RequirementsPanel schema={schema} />

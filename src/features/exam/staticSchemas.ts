@@ -213,10 +213,4 @@ export const staticSchemas: Record<string, ExamSchema> = {
       subjectiveRequirements: 2
     }
   }
-        maxSizeKB: 50,
-        dimensions: '140x60',
-        description: 'Signature image (filename: sign_rollno.jpg)',
-      }
-    ],
-  }
 };
