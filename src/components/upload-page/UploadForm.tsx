@@ -9,6 +9,8 @@ import { NamingPopup } from './NamingPopup';
 import { UploadField } from './UploadField';
 import { CertificateDetails } from './CertificateDetails';
 import { CompletionButtons } from './CompletionButtons';
+import { UserNameInput } from './UserNameInput';
+import { addDOPBand, canAddDOPBand } from '@/utils/dopBand';
 import toast from 'react-hot-toast';
 import { transformFile } from '@/features/transform/transformFile';
 
@@ -40,8 +42,9 @@ export function UploadForm({ schema }: { schema: any }) {
   const [previewFiles, setPreviewFiles] = useState<FileWithMeta[]>([]);
   const requirements = getDefaultRequirements(schema);
   const [uploadedTypes, setUploadedTypes] = useState<Record<string, boolean>>({});
+  const [userName, setUserName] = useState('');
 
-  const onFileUpload = async (type: string, file: File | null) => {
+  const onFileUpload = async (type: string, file: File | null, dopData?: { date: string; enabled: boolean; addBand?: boolean }) => {
     if (!file) {
       setUploadedTypes(prev => ({ ...prev, [type]: false }));
       return;
@@ -55,8 +58,46 @@ export function UploadForm({ schema }: { schema: any }) {
         return;
       }
 
+      let processedFile = file;
+
+      // Add DOP band to image if requested
+      if (dopData && dopData.enabled && dopData.addBand && userName.trim()) {
+        if (canAddDOPBand(file)) {
+          try {
+            toast.loading('🖼️ Adding DOP band to photo...', { id: 'dop-band' });
+            processedFile = await addDOPBand(file, {
+              userName: userName.trim(),
+              dateOfPhotography: dopData.date
+            });
+            toast.success('✅ DOP band added to photo', { id: 'dop-band' });
+          } catch (error) {
+            console.error('DOP band error:', error);
+            toast.error('⚠️ Failed to add DOP band, using original photo', { id: 'dop-band' });
+          }
+        } else {
+          toast.error('❌ DOP band only supported for JPEG/PNG images');
+        }
+      }
+
       // Transform the file first
-      const transformed = await transformFile(file as File, matchedReq);
+      const transformed = await transformFile(processedFile as File, matchedReq);
+      
+      // Add DOP metadata if provided (even if band wasn't added)
+      if (dopData && dopData.enabled) {
+        // Store DOP metadata in a way that can be retrieved later
+        (transformed as any).dopMetadata = {
+          date: dopData.date,
+          formatted: new Date(dopData.date).toLocaleDateString(),
+          type: 'date_of_photography',
+          bandAdded: dopData.addBand && userName.trim() && canAddDOPBand(file),
+          userName: userName.trim()
+        };
+        
+        console.log(`📅 DOP set for ${type}:`, dopData.date);
+        if (!dopData.addBand) {
+          toast.success(`📅 Date of Photography set: ${new Date(dopData.date).toLocaleDateString()}`);
+        }
+      }
       
       // Handle the upload and check for validation errors
       handleUpload(transformed);
@@ -115,6 +156,13 @@ export function UploadForm({ schema }: { schema: any }) {
 
   return (
     <div className="max-w-md mx-auto px-4 pb-24 space-y-4">
+      {/* User Name Input - Always at the top */}
+      <UserNameInput 
+        value={userName}
+        onChange={setUserName}
+        required={true}
+      />
+      
       {requirements.map((req) => (
         <div key={req.id || req.type} className="border rounded-lg p-4 mb-4">
           <div className="flex justify-between items-start mb-2">
@@ -132,10 +180,12 @@ export function UploadForm({ schema }: { schema: any }) {
           <UploadField
             label={req.displayName || req.type}
             required={req.mandatory !== false}
-            onUpload={(file) => onFileUpload(req.type, file as File)}
+            onUpload={(file, dopData) => onFileUpload(req.type, file as File, dopData)}
             uploaded={uploadedTypes[req.type] || false}
             accept={req.format?.toLowerCase()}
             helpText={req.helpText}
+            fieldType={req.type || req.id || ''}
+            userName={userName}
           />
 
           {/* Show validation rules */}

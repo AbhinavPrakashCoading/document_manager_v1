@@ -1,5 +1,6 @@
 import JSZip from 'jszip';
-import { FileWithMeta, ExamSchema } from '@/features/package/types';
+import { FileWithMeta } from '@/features/package/types';
+import { ExamSchema } from '@/features/exam/examSchema';
 import { DocumentRequirement } from '@/features/exam/types';
 import { persistAudit } from '@/features/audit/logger';
 
@@ -25,6 +26,8 @@ export async function generateZip(
     : files; // If no requirements, use files as is
 
   // Add each file to the zip and track total size
+  const dopMetadata: any[] = [];
+  
   for (const fileEntry of ordered) {
     if (!fileEntry) continue;
     
@@ -33,6 +36,18 @@ export async function generateZip(
       if (file instanceof Blob) {
         zip.file(file.name, file);
         totalSize += file.size;
+        
+        // Check for DOP metadata
+        const dopData = (file as any).dopMetadata;
+        if (dopData) {
+          dopMetadata.push({
+            filename: file.name,
+            documentType: fileEntry.requirement?.type || 'unknown',
+            dateOfPhotography: dopData.date,
+            dateFormatted: dopData.formatted,
+            addedAt: new Date().toISOString()
+          });
+        }
       } else {
         console.error('[ZIP] Invalid file object:', file);
         return { success: false, error: 'Invalid file object' };
@@ -41,6 +56,20 @@ export async function generateZip(
       console.error('[ZIP] Error adding file to zip:', error);
       return { success: false, error: 'Error adding file to zip' };
     }
+  }
+
+  // Add DOP metadata file if we have any DOP data
+  if (dopMetadata.length > 0) {
+    const dopInfo = {
+      generatedAt: new Date().toISOString(),
+      examType: schema.examName || schema.examId,
+      rollNumber: options?.rollNumber || 'unknown',
+      dateOfPhotographyRecords: dopMetadata,
+      note: 'This file contains Date of Photography information for uploaded documents'
+    };
+    
+    zip.file('DOP_METADATA.json', JSON.stringify(dopInfo, null, 2));
+    console.log('[ZIP] Added DOP metadata for', dopMetadata.length, 'files');
   }
 
   const estimatedKB = Math.round(totalSize / 1024);
@@ -57,7 +86,9 @@ export async function generateZip(
       meta: {
         estimatedSizeKB: estimatedKB,
         schemaVersion: schema.version ?? 'unknown',
-        format: options?.format ?? 'zip'
+        format: options?.format ?? 'zip',
+        dopRecordsCount: dopMetadata.length,
+        dopFiles: dopMetadata.map(d => ({ filename: d.filename, date: d.dateOfPhotography }))
       }
     }).catch(err => {
       console.warn('[ZIP] Audit logging failed, continuing with download:', err);
