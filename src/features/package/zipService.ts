@@ -35,39 +35,38 @@ export async function generateZip(
         totalSize += file.size;
       } else {
         console.error('[ZIP] Invalid file object:', file);
-        throw new Error('Invalid file object');
+        return { success: false, error: 'Invalid file object' };
       }
     } catch (error) {
       console.error('[ZIP] Error adding file to zip:', error);
-      throw error;
+      return { success: false, error: 'Error adding file to zip' };
     }
   }
 
   const estimatedKB = Math.round(totalSize / 1024);
   console.log(`[ZIP] Estimated size: ${estimatedKB}KB`);
 
-  persistAudit({
-    file: 'submission.zip',
-    rollNumber: options?.rollNumber ?? 'unknown',
-    result: 'ZIP generated',
-    mode: 'packaging',
-    errors: [],
-    meta: {
-      estimatedSizeKB: estimatedKB,
-      schemaVersion: schema.version ?? 'unknown',
-      format: options?.format ?? 'zip'
-    }
-  });
-  
-  return { success: true };
-    rollNumber: options?.rollNumber ?? 'unknown',
-    result: 'ZIP generated',
-    mode: 'packaging',
-    errors: [],
-    meta: {
-      estimatedSizeKB: estimatedKB,
-      schemaVersion: schema.version ?? 'unknown',
-      format: options?.format ?? 'zip',
+  try {
+    await persistAudit({
+      file: 'submission.zip',
+      rollNumber: options?.rollNumber ?? 'unknown',
+      result: 'ZIP generated',
+      mode: 'packaging',
+      errors: [],
+      meta: {
+        estimatedSizeKB: estimatedKB,
+        schemaVersion: schema.version ?? 'unknown',
+        format: options?.format ?? 'zip'
+      }
+    });
+
+    // Generate and return zip file
+    await zip.generateAsync({ type: 'blob' });
+    return { success: true };
+  } catch (error) {
+    console.error('[ZIP] Error:', error);
+    return { success: false, error: String(error) };
+  }
     },
   });
 
