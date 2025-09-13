@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "cross-env FORCE_COLOR=1 next dev --turbo",
-    "build": "pnpm install --no-frozen-lockfile && next build",
+    "build": "pnpm install && next build",
     "start": "next start",
     "lint": "next lint",
     "lint:fix": "next lint --fix",

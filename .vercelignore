@@ -1,0 +1,7 @@
+.git
+.github
+.storybook
+node_modules
+.env
+.env.*
+*.log
