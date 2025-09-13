@@ -35,8 +35,17 @@ export function DownloadZipButton({
         };
       });
 
-      const result = await generateZip(fileWithMeta, { requirements: schema });
-      
+      const examSchema: ExamSchema = {
+        examId: 'unknown',
+        examName: 'Unknown',
+        requirements: schema,
+      };
+
+      const result = await generateZip(fileWithMeta, examSchema, {
+        format: 'zip',
+        rollNumber: localStorage.getItem('rollNumber') || 'unknown',
+      });
+
       if (!result.success || !result.blob) {
         throw new Error(result.error || 'Failed to generate ZIP');
       }
@@ -48,8 +57,12 @@ export function DownloadZipButton({
       a.download = 'submission.zip';
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      
+      // Clean up after a short delay to ensure the download starts
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 100);
 
       toast.success('ZIP downloaded successfully!');
     } catch (error) {

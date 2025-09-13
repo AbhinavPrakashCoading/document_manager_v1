@@ -7,12 +7,19 @@ import { ProcessButton } from '@/components/confirm-page/ProcessButton';
 import { ProcessedPreview } from '@/components/confirm-page/ProcessedPreview';
 import { DownloadZipButton } from '@/components/confirm-page/DownloadZipButton';
 import { transformFile } from '@/features/transform/transformFile';
-import { Requirement } from '@/features/exam/examSchema';
+import { DocumentRequirement } from '@/features/exam/types';
+
+// Declare global window interface
+declare global {
+  interface Window {
+    uploadedFiles?: File[];
+  }
+}
 
 export default function ConfirmPage() {
   const router = useRouter();
   const [files, setFiles] = useState<File[]>([]);
-  const [schema, setSchema] = useState<Requirement[]>([]);
+  const [schema, setSchema] = useState<DocumentRequirement[]>([]);
   const [processed, setProcessed] = useState<File[]>([]);
   const [ready, setReady] = useState(false);
 
@@ -23,20 +30,32 @@ export default function ConfirmPage() {
       return;
     }
 
-    import(`@/schemas/${examId}.json`)
-      .then((mod) => setSchema(mod.default.requirements))
-      .catch(() => router.replace('/select'));
+    // Load and set schema
+    const loadSchema = async () => {
+      try {
+        const mod = await import(`@/schemas/${examId}.json`);
+        setSchema(mod.default.requirements || []);
+      } catch (err) {
+        console.error('Failed to load schema:', err);
+        router.replace('/select');
+      }
+    };
+    loadSchema();
 
+    // Set files
     const uploaded = window.uploadedFiles || [];
-    if (uploaded.length === 0) router.replace('/upload');
-    else setFiles(uploaded);
+    if (uploaded.length === 0) {
+      router.replace('/upload');
+    } else {
+      setFiles(uploaded);
+    }
   }, [router]);
 
   const handleProcess = async () => {
     const transformed: File[] = [];
 
     for (const file of files) {
-      const matchedReq = schema.find((r) =>
+      const matchedReq = schema.find((r: DocumentRequirement) =>
         file.name.toLowerCase().includes(r.type.toLowerCase())
       );
 
