@@ -7,7 +7,7 @@ export async function generateZip(
   files: FileWithMeta[],
   schema: ExamSchema,
   options?: { format?: 'zip' | 'tar'; rollNumber?: string }
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; blob?: Blob }> {
   const zip = new JSZip();
   let totalSize = 0;
 
@@ -47,6 +47,7 @@ export async function generateZip(
   console.log(`[ZIP] Estimated size: ${estimatedKB}KB`);
 
   try {
+    // Log the operation
     await persistAudit({
       file: 'submission.zip',
       rollNumber: options?.rollNumber ?? 'unknown',
@@ -60,26 +61,21 @@ export async function generateZip(
       }
     });
 
-    // Generate and return zip file
-    await zip.generateAsync({ type: 'blob' });
-    return { success: true };
+    // Generate zip file
+    const blob = await zip.generateAsync({ 
+      type: 'blob',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 9 }
+    });
+
+    // Warn if tar format was requested but not supported
+    if (options?.format === 'tar') {
+      console.warn('[ZIP] .tar.gz output not yet implemented');
+    }
+
+    return { success: true, blob };
   } catch (error) {
     console.error('[ZIP] Error:', error);
     return { success: false, error: String(error) };
-  }
-    },
-  });
-
-  const blob = await zip.generateAsync({ type: 'blob' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'submission.zip';
-  a.click();
-  URL.revokeObjectURL(url);
-
-  // Stub: TAR support
-  if (options?.format === 'tar') {
-    console.warn('[ZIP] .tar.gz output not yet implemented');
   }
 }
