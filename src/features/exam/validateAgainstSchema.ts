@@ -1,42 +1,27 @@
-import { DocumentRequirement } from './examSchema';
-
-export type UploadedFileMeta = {
-  name: string;
-  type: string; // MIME type, e.g., "image/jpeg"
-  size: number; // in bytes
-  dimensions?: string; // optional, e.g., "200x230"
-};
-
-export type ValidationResult = {
-  valid: boolean;
-  errors: string[];
-};
-
-export function validateFileAgainstRequirement(
-  file: UploadedFileMeta,
-  requirement: DocumentRequirement
-): ValidationResult {
-  const errors: string[] = [];
-
-  // Format check with normalization
-const fileFormat = file.type.split('/')[1].toUpperCase();
-
-const normalizeFormat = (format: string) =>
-  format.toUpperCase().replace('JPEG', 'JPG');
-
-if (normalizeFormat(fileFormat) !== normalizeFormat(requirement.format)) {
-  errors.push(`Invalid format: expected ${requirement.format}, got ${fileFormat}`);
+interface ValidationRequirement {
+  format?: string;
+  maxSizeKB?: number;
+  dimensions?: string;
+  type: string;
 }
 
-  // Size check
-  const sizeKB = Math.round(file.size / 1024);
-  if (sizeKB > requirement.maxSizeKB) {
-    errors.push(`File too large: max ${requirement.maxSizeKB}KB, got ${sizeKB}KB`);
+export function validateFileAgainstRequirement(
+  file: File,
+  requirement: ValidationRequirement
+): { valid: boolean; errors: string[]; warnings?: string[] } {
+  const errors: string[] = [];
+
+  // Check size if maxSizeKB is specified
+  if (requirement.maxSizeKB) {
+    const maxBytes = requirement.maxSizeKB * 1024;
+    if (file.size > maxBytes) {
+      errors.push(`❌ ${file.name} exceeds max size of ${requirement.maxSizeKB}KB`);
+    }
   }
 
-  // Dimensions check (optional)
-  if (requirement.dimensions && file.dimensions !== requirement.dimensions) {
-    errors.push(`Incorrect dimensions: expected ${requirement.dimensions}, got ${file.dimensions}`);
+  // Check format if specified
+  if (requirement.format && !file.type.toLowerCase().includes(requirement.format.toLowerCase())) {
+    errors.push(`❌ ${file.name} is of type ${file.type}, expected ${requirement.format}`);
   }
 
   return {

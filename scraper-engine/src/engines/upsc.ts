@@ -1,11 +1,7 @@
-import { ExamSchema } from './schema/types';
-import { fetchHTML, extractText } from '../utils/html';
+import { ExamSchema } from '../schema/types';
 
 export async function scrapeUPSC(): Promise<ExamSchema> {
-  const html = await fetchHTML('https://upsc.gov.in/document-guidelines');
-  const photoSpec = extractText(html, '#photo-spec');
-  const signSpec = extractText(html, '#sign-spec');
-
+  // Stubbed logic — replace with real scraping later
   return {
     examId: 'upsc',
     examName: 'UPSC Civil Services',

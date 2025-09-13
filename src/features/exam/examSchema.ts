@@ -1,19 +1,51 @@
-export type DocumentRequirement = {
-  type: string; // e.g., "Photo", "Signature", "Passport Scan"
-  format: 'JPG' | 'JPEG' | 'PNG' | 'PDF';
-  maxSizeKB: number;
-  dimensions?: string; // e.g., "200x230"
-  dpi?: number; // optional, e.g., 300
-  namingConvention?: string; // e.g., "photo_rollno.jpg"
-};
+import { DocumentRequirement } from './types';
 
-export type ExamSchema = {
+export interface ExamSchema {
   examId: string;
   examName: string;
   requirements: DocumentRequirement[];
-};
+  properties?: {
+    personalInfo?: {
+      type: 'object';
+      required: string[];
+      properties: {
+        name: {
+          type: 'string';
+          description: string;
+        };
+        dateOfBirth: {
+          type: 'string';
+          format: 'date';
+          description: string;
+        };
+        registrationNumber: {
+          type: 'string';
+          description: string;
+        };
+      };
+    };
+    documents?: {
+      type: 'array';
+      items: {
+        type: 'object';
+        required: string[];
+        properties: {
+          type: {
+            type: 'string';
+            enum: string[];
+            description: string;
+          };
+          file: {
+            type: 'string';
+            format: 'binary';
+            description: string;
+          };
+        };
+      };
+    };
+  };
+}
 
-// UPSC Civil Services
 export const UPSC: ExamSchema = {
   examId: 'upsc',
   examName: 'UPSC Civil Services',
@@ -35,41 +67,6 @@ export const UPSC: ExamSchema = {
   ],
 };
 
-// SSC CGL
-export const SSC: ExamSchema = {
-  examId: 'ssc',
-  examName: 'SSC CGL',
-  requirements: [
-    {
-      type: 'Photo',
-      format: 'JPEG',
-      maxSizeKB: 100,
-    },
-    {
-      type: 'Signature',
-      format: 'JPEG',
-      maxSizeKB: 50,
-    },
-  ],
-};
-
-// IELTS Academic
-export const IELTS: ExamSchema = {
-  examId: 'ielts',
-  examName: 'IELTS Academic',
-  requirements: [
-    {
-      type: 'Passport Scan',
-      format: 'PDF',
-      maxSizeKB: 500,
-      namingConvention: 'passport_scan.pdf',
-    },
-  ],
-};
-
-// Registry for easy lookup
 export const ExamRegistry: Record<string, ExamSchema> = {
   upsc: UPSC,
-  ssc: SSC,
-  ielts: IELTS,
 };

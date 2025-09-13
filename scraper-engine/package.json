@@ -1,0 +1,8 @@
+{
+  "name": "scraper-engine",
+  "version": "1.0.0",
+  "type": "module",
+  "devDependencies": {
+    "tsx": "^4.20.5"
+  }
+}

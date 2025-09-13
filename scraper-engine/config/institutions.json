@@ -1,0 +1,16 @@
+{
+  "ssc": {
+    "url": "https://ssc.nic.in",
+    "selectors": {
+      "latestNotice": "#latestNotice",
+      "examDate": ".exam-date"
+    }
+  },
+  "upsc": {
+    "url": "https://upsc.gov.in",
+    "selectors": {
+      "calendar": "#examCalendar",
+      "result": ".result-section"
+    }
+  }
+}

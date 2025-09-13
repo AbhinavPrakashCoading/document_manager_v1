@@ -1,57 +1,46 @@
 import { describe, it, expect } from 'vitest';
 import { validateFileAgainstRequirement } from '@/features/exam/validateAgainstSchema';
-import { UPSC } from '@/features/exam/examSchema';
+
+const mockFile = (type: string, sizeKB: number): File =>
+  new File(['x'.repeat(sizeKB * 1024)], 'test.jpg', { type });
+
+const requirement = {
+  format: 'JPEG',
+  maxSizeKB: 50,
+  dimensions: '200x300',
+  namingConvention: 'photo.jpg',
+};
 
 describe('validateFileAgainstRequirement', () => {
-  it('should pass validation for correct file', () => {
-    const validFile = {
-      name: 'photo.jpg',
-      type: 'image/jpeg',
-      size: 48000, // ~47KB
-      dimensions: '200x230',
-    };
-
-    const result = validateFileAgainstRequirement(validFile, UPSC.requirements[0]);
+  it('passes for valid JPEG under size limit', () => {
+    const file = mockFile('image/jpeg', 40);
+    const result = validateFileAgainstRequirement(file, requirement);
     expect(result.valid).toBe(true);
     expect(result.errors.length).toBe(0);
   });
 
-  it('should fail if format is incorrect', () => {
-    const invalidFormatFile = {
-      name: 'photo.png',
-      type: 'image/png',
-      size: 48000,
-      dimensions: '200x230',
-    };
-
-    const result = validateFileAgainstRequirement(invalidFormatFile, UPSC.requirements[0]);
+  it('fails for wrong format', () => {
+    const file = mockFile('image/png', 40);
+    const result = validateFileAgainstRequirement(file, requirement);
     expect(result.valid).toBe(false);
-    expect(result.errors).toContain('Invalid format: expected JPG, got PNG');
+    expect(result.errors).toContain(
+      `❌ test.jpg is of type image/png, expected ${requirement.format}`
+    );
   });
 
-  it('should fail if size exceeds limit', () => {
-    const largeFile = {
-      name: 'photo.jpg',
-      type: 'image/jpeg',
-      size: 60000, // ~58KB
-      dimensions: '200x230',
-    };
-
-    const result = validateFileAgainstRequirement(largeFile, UPSC.requirements[0]);
+  it('fails for oversized file', () => {
+    const file = mockFile('image/jpeg', 80);
+    const result = validateFileAgainstRequirement(file, requirement);
     expect(result.valid).toBe(false);
-    expect(result.errors).toContain('File too large: max 50KB, got 59KB');
+    expect(result.errors).toContain(
+      `❌ test.jpg exceeds max size of ${requirement.maxSizeKB}KB`
+    );
   });
 
-  it('should fail if dimensions are incorrect', () => {
-    const wrongDimensionsFile = {
-      name: 'photo.jpg',
-      type: 'image/jpeg',
-      size: 48000,
-      dimensions: '300x300',
-    };
-
-    const result = validateFileAgainstRequirement(wrongDimensionsFile, UPSC.requirements[0]);
+  it('fails for both format and size', () => {
+    const file = mockFile('image/png', 80);
+    const result = validateFileAgainstRequirement(file, requirement);
     expect(result.valid).toBe(false);
-    expect(result.errors).toContain('Incorrect dimensions: expected 200x230, got 300x300');
+    expect(result.errors.length).toBe(2);
   });
 });
