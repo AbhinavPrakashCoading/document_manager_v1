@@ -1,6 +1,6 @@
 'use client';
 
-import { ExamGrid } from '@/components/exam-selector/ExamGrid';
+import { ExamGrid, GuestModeHeader, GuestLimitations } from '@/components/ClientOnlyGuestMode';
 import toast from 'react-hot-toast';
 import { useEffect } from 'react';
 
@@ -16,11 +16,17 @@ export default function SelectPage() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-gray-50 py-12 px-4 space-y-8">
-      <ExamGrid />
-      <footer className="text-xs text-gray-500 text-center pt-12">
-        Made by Abhinav • Powered by Registry Engine ⚙️
-      </footer>
-    </main>
+    <>
+      <GuestModeHeader />
+      <main className="min-h-screen bg-gray-50 py-12 px-4 space-y-8">
+        <div className="max-w-4xl mx-auto">
+          <GuestLimitations />
+          <ExamGrid />
+        </div>
+        <footer className="text-xs text-gray-500 text-center pt-12">
+          Made by Abhinav • Powered by Registry Engine ⚙️
+        </footer>
+      </main>
+    </>
   );
 }

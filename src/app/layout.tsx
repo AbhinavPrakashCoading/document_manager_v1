@@ -1,5 +1,6 @@
 import 'styles/tailwind.css';
 import type { Metadata } from 'next';
+import { Providers } from '@/components/providers';
 
 export const metadata: Metadata = {
   title: 'ExamDoc Uploader',
@@ -35,7 +36,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <head />
       <body suppressHydrationWarning>
-        {children}
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );

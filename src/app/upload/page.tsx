@@ -1,9 +1,10 @@
 'use client';
 
 import { Suspense } from 'react';
-import dynamic from 'next/dynamic';
+import dynamicImport from 'next/dynamic';
+import { GuestModeHeader } from '@/components/ClientOnlyGuestMode';
 
-const UploadPageContent = dynamic(
+const UploadPageContent = dynamicImport(
   () => import('@/components/upload-page/UploadPageContent'),
   {
     ssr: false,
@@ -17,12 +18,15 @@ const UploadPageContent = dynamic(
 
 export default function UploadPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center text-gray-500 text-sm">
-        Loading...
-      </div>
-    }>
-      <UploadPageContent />
-    </Suspense>
+    <>
+      <GuestModeHeader />
+      <Suspense fallback={
+        <div className="min-h-screen flex items-center justify-center text-gray-500 text-sm">
+          Loading...
+        </div>
+      }>
+        <UploadPageContent />
+      </Suspense>
+    </>
   );
 }

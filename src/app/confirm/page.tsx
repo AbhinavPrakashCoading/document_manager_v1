@@ -6,6 +6,7 @@ import { FileComparisonTable } from '@/components/confirm-page/FileComparisonTab
 import { ProcessButton } from '@/components/confirm-page/ProcessButton';
 import { ProcessedPreview } from '@/components/confirm-page/ProcessedPreview';
 import { DownloadZipButton } from '@/components/confirm-page/DownloadZipButton';
+import { GuestModeHeader } from '@/components/ClientOnlyGuestMode';
 import { transformFile } from '@/features/transform/transformFile';
 import { DocumentRequirement } from '@/features/exam/types';
 import { staticSchemas } from '@/features/exam/staticSchemas';
@@ -84,6 +85,7 @@ export default function ConfirmPage() {
 
   return (
     <main className="min-h-screen bg-gray-50 py-8 px-4 space-y-8">
+      <GuestModeHeader />
       <h1 className="text-xl font-semibold text-center">📦 Confirm & Process Uploads</h1>
 
       <FileComparisonTable files={files} schema={schema} />

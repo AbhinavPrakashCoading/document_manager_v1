@@ -1,6 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
+import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 
 interface UserNameInputProps {
   value: string;
@@ -10,29 +13,54 @@ interface UserNameInputProps {
 
 export function UserNameInput({ value, onChange, required = true }: UserNameInputProps) {
   const [focused, setFocused] = useState(false);
+  const { data: session } = useSession();
+  const searchParams = useSearchParams();
+  const isGuestMode = searchParams.get('mode') === 'guest';
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Convert to uppercase and clean the input
-    const cleanName = e.target.value
-      .toUpperCase()
-      .replace(/[^A-Z\s]/g, '') // Only allow letters and spaces
-      .replace(/\s+/g, ' ') // Replace multiple spaces with single space
-      .substring(0, 50); // Limit length
-    
-    onChange(cleanName);
-  };
+  // Auto-fill user's name from session when component mounts
+  useEffect(() => {
+    if (session?.user?.name && !value) {
+      const cleanName = session.user.name
+        .toUpperCase()
+        .replace(/[^A-Z\s]/g, '') // Only allow letters and spaces
+        .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+        .substring(0, 50); // Limit length
+      
+      onChange(cleanName);
+    }
+  }, [session?.user?.name, value, onChange]);
 
   return (
     <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-      <label className="block text-sm font-medium text-blue-900 mb-2">
-        Full Name (for DOP Band)
-        {required && <span className="text-red-600"> *</span>}
-      </label>
+      <div className="flex items-center justify-between mb-2">
+        <label className="block text-sm font-medium text-blue-900">
+          Full Name (for DOP Band)
+          {required && <span className="text-red-600"> *</span>}
+        </label>
+        
+        {isGuestMode && !session && (
+          <Link
+            href="/auth/signup"
+            className="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 transition-colors"
+          >
+            Save Progress?
+          </Link>
+        )}
+      </div>
       
       <input
         type="text"
         value={value}
-        onChange={handleChange}
+        onChange={(e) => {
+          // Convert to uppercase and clean the input
+          const cleanName = e.target.value
+            .toUpperCase()
+            .replace(/[^A-Z\s]/g, '') // Only allow letters and spaces
+            .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+            .substring(0, 50); // Limit length
+          
+          onChange(cleanName);
+        }}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         placeholder="Enter your full name as it appears on documents"
@@ -59,6 +87,9 @@ export function UserNameInput({ value, onChange, required = true }: UserNameInpu
           <li>Use your full legal name as it appears on official documents</li>
           <li>Only letters and spaces are allowed</li>
           <li>Name will be automatically converted to UPPERCASE</li>
+          {isGuestMode && !session && (
+            <li className="text-yellow-600 font-medium">Guest mode: Name won't be saved for future use</li>
+          )}
         </ul>
       </div>
     </div>
