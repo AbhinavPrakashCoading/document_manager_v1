@@ -2,14 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import { useUpload } from '@/features/upload/useUpload';
+import { useAutoSave } from '@/hooks/useAutoSave';
 import { ExamSchema } from '@/features/exam/examSchema';
-import { generateZip, FileWithMeta } from '@/features/package/zipService';
+import { generateZip } from '@/features/package/zipService';
+import { FileWithMeta } from '@/features/package/types';
 import { ZipPreviewModal } from '../ZipPreviewModal';
 import { NamingPopup } from './NamingPopup';
 import { UploadField } from './UploadField';
 import { CertificateDetails } from './CertificateDetails';
 import { CompletionButtons } from './CompletionButtons';
 import { UserNameInput } from './UserNameInput';
+import { DraftStatus, DraftRecoveryBanner } from '@/components/draft/DraftStatus';
+import { DraftRecoveryModal } from '@/components/draft/DraftRecoveryModal';
 import { addDOPBand, canAddDOPBand } from '@/utils/dopBand';
 import toast from 'react-hot-toast';
 import { transformFile } from '@/features/transform/transformFile';
@@ -39,10 +43,76 @@ export function UploadForm({ schema }: { schema: any }) {
   const { files, results, handleUpload } = useUpload(schema);
   const [showNaming, setShowNaming] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const [previewFiles, setPreviewFiles] = useState<FileWithMeta[]>([]);
+  const [previewFiles, setPreviewFiles] = useState<any[]>([]);
   const requirements = getDefaultRequirements(schema);
   const [uploadedTypes, setUploadedTypes] = useState<Record<string, boolean>>({});
   const [userName, setUserName] = useState('');
+  const [showDraftRecovery, setShowDraftRecovery] = useState(false);
+  const [showRecoveryModal, setShowRecoveryModal] = useState(false);
+  const [rollNumber, setRollNumber] = useState('');
+
+  // Initialize auto-save
+  const {
+    formData,
+    status: autoSaveStatus,
+    updateFormData,
+    addFile,
+    forceSave,
+    clearDraft,
+    restoreDraft,
+    hasUnsavedChanges,
+  } = useAutoSave({
+    examId: schema.examId || 'unknown',
+    enabled: true,
+    onError: (error) => {
+      console.error('Auto-save error:', error);
+      toast.error(`Auto-save failed: ${error}`);
+    },
+    onSave: (draft) => {
+      console.log('Draft saved:', draft);
+    },
+    onRestore: (draft) => {
+      // Restore form state from draft
+      if (draft.formData.rollNumber) {
+        setRollNumber(draft.formData.rollNumber);
+      }
+      if (draft.formData.personalInfo?.name) {
+        setUserName(draft.formData.personalInfo.name);
+      }
+      // Show recovery notification
+      setShowDraftRecovery(true);
+      toast.success('Draft restored successfully');
+    },
+  });
+
+  // Initialize form data on mount
+  useEffect(() => {
+    const initializeForm = async () => {
+      // Check for existing draft and show recovery options
+      const storedRoll = localStorage.getItem('rollNumber');
+      if (storedRoll && !rollNumber) {
+        setRollNumber(storedRoll);
+      }
+    };
+
+    initializeForm();
+  }, [rollNumber]);
+
+  // Auto-save form data changes
+  useEffect(() => {
+    updateFormData({
+      rollNumber,
+      personalInfo: {
+        name: userName,
+      },
+      uploadProgress: {
+        totalFiles: requirements.length,
+        uploadedFiles: Object.values(uploadedTypes).filter(Boolean).length,
+        validFiles: files.filter(file => !results[file.name]?.length).length,
+        currentStep: showPreview ? 'review' : showNaming ? 'validation' : 'upload',
+      },
+    });
+  }, [rollNumber, userName, uploadedTypes, files, results, requirements.length, showPreview, showNaming, updateFormData]);
 
   const onFileUpload = async (type: string, file: File | null, dopData?: { date: string; enabled: boolean; addBand?: boolean }) => {
     if (!file) {
@@ -102,6 +172,9 @@ export function UploadForm({ schema }: { schema: any }) {
       // Handle the upload and check for validation errors
       handleUpload(transformed);
       
+      // Add file to auto-save draft
+      await addFile(type, transformed);
+      
       // Get the validation results for this file
       const hasErrors = results[transformed.name]?.length > 0;
       
@@ -120,6 +193,13 @@ export function UploadForm({ schema }: { schema: any }) {
   };
 
   const handleNamingSubmit = async (data: { roll: string; name: string; age: string }) => {
+    // Update auto-save data
+    setRollNumber(data.roll);
+    setUserName(data.name);
+    
+    // Save roll number to localStorage for persistence
+    localStorage.setItem('rollNumber', data.roll);
+    
     const validFiles = files.filter(file => {
       const type = requirements.find(r => 
         file.name.toLowerCase().includes(r.type.toLowerCase())
@@ -127,7 +207,7 @@ export function UploadForm({ schema }: { schema: any }) {
       return type && !results[file.name]?.length;
     });
 
-    const fileWithMeta: FileWithMeta[] = validFiles.map(file => {
+    const fileWithMeta: any[] = validFiles.map(file => {
       const matchedReq = requirements.find(r =>
         file.name.toLowerCase().includes(r.type.toLowerCase())
       );
@@ -148,6 +228,9 @@ export function UploadForm({ schema }: { schema: any }) {
     setPreviewFiles(fileWithMeta);
     setShowNaming(false);
     setShowPreview(true);
+    
+    // Force save draft with updated data
+    await forceSave();
   };
 
   const allUploaded = requirements.every(
@@ -156,6 +239,27 @@ export function UploadForm({ schema }: { schema: any }) {
 
   return (
     <div className="max-w-md mx-auto px-4 pb-24 space-y-4">
+      {/* Draft Recovery Banner */}
+      {showDraftRecovery && (
+        <DraftRecoveryBanner
+          onRestore={restoreDraft}
+          onDismiss={() => setShowDraftRecovery(false)}
+          draftDate={formData.uploadProgress ? new Date() : undefined}
+          className="mb-4"
+        />
+      )}
+
+      {/* Auto-save Status */}
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-lg font-semibold">Upload Documents</h2>
+        <DraftStatus
+          status={autoSaveStatus}
+          onForceSave={forceSave}
+          onRestore={() => setShowRecoveryModal(true)}
+          className="text-xs"
+        />
+      </div>
+
       {/* User Name Input - Always at the top */}
       <UserNameInput 
         value={userName}
@@ -250,6 +354,36 @@ export function UploadForm({ schema }: { schema: any }) {
         allUploaded={allUploaded}
         onNext={() => setShowNaming(true)}
       />
+
+      {/* Draft Recovery Modal */}
+      {showRecoveryModal && (
+        <DraftRecoveryModal
+          isOpen={showRecoveryModal}
+          onClose={() => setShowRecoveryModal(false)}
+          onRestore={(draft) => {
+            // Restore form data from selected draft
+            if (draft.formData.rollNumber) setRollNumber(draft.formData.rollNumber);
+            if (draft.formData.personalInfo?.name) setUserName(draft.formData.personalInfo.name);
+            toast.success('Draft restored successfully');
+          }}
+          onStartFresh={async () => {
+            await clearDraft();
+            setRollNumber('');
+            setUserName('');
+            setUploadedTypes({});
+            toast.success('Started with fresh form');
+          }}
+          examId={schema.examId || 'unknown'}
+        />
+      )}
+
+      {/* Unsaved changes warning */}
+      {hasUnsavedChanges && (
+        <div className="fixed bottom-4 right-4 bg-amber-100 border border-amber-400 rounded-lg p-3 shadow-lg">
+          <p className="text-sm text-amber-800 font-medium">You have unsaved changes</p>
+          <p className="text-xs text-amber-600">Changes are being auto-saved</p>
+        </div>
+      )}
     </div>
   );
 }
