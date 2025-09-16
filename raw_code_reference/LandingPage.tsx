@@ -2,17 +2,16 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { 
-  Check, 
-  FileText, 
-  CloudUpload, 
-  Shield,
-  Smartphone,
-  Settings,
-  Zap,
-  RefreshCw
-} from 'lucide-react';
+  CheckIcon, 
+  DocumentTextIcon, 
+  CloudArrowUpIcon, 
+  ShieldCheckIcon,
+  DevicePhoneMobileIcon,
+  CogIcon,
+  BoltIcon,
+  ArrowPathIcon
+} from '@heroicons/react/24/outline';
 
 // Types
 interface StepCardProps {
@@ -71,21 +70,22 @@ const ExamCard: React.FC<ExamCardProps> = ({ icon, title, description }) => (
 );
 
 // Main Landing Page Component
-export default function LandingPage() {
+const LandingPage: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const router = useRouter();
 
   const handleGetStarted = () => {
     // Integration point for your auth flow
-    router.push('/auth/signup');
+    window.location.href = '/auth/signup';
   };
 
   const handleSignIn = () => {
-    router.push('/auth/signin');
+    // Integration point for your auth flow
+    window.location.href = '/auth/signin';
   };
 
-  const handleTryGuest = () => {
-    router.push('/select?mode=guest');
+  const handleTryAsGuest = () => {
+    // Integration point for your guest flow
+    window.location.href = '/app?guest=true';
   };
 
   return (
@@ -149,7 +149,7 @@ export default function LandingPage() {
 
       {/* Hero Section */}
       <section className="pt-20 pb-24 bg-gradient-to-br from-indigo-600 via-purple-600 to-purple-700 text-white relative overflow-hidden">
-        <div className="absolute inset-0 bg-black/10 backdrop-blur-sm"></div>
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><defs><pattern id=\"grain\" width=\"100\" height=\"100\" patternUnits=\"userSpaceOnUse\"><circle cx=\"25\" cy=\"25\" r=\"1\" fill=\"rgba(255,255,255,0.1)\"/><circle cx=\"75\" cy=\"75\" r=\"1\" fill=\"rgba(255,255,255,0.05)\"/><circle cx=\"50\" cy=\"10\" r=\"0.5\" fill=\"rgba(255,255,255,0.1)\"/></pattern></defs><rect width=\"100\" height=\"100\" fill=\"url(%23grain)\"/></svg>')] opacity-30"></div>
         
         <div className="max-w-6xl mx-auto px-6 relative z-10">
           <div className="text-center py-24">
@@ -179,7 +179,7 @@ export default function LandingPage() {
             <div className="text-white/80 text-sm">
               <p>or</p>
               <button 
-                onClick={handleTryGuest}
+                onClick={handleTryAsGuest}
                 className="text-white underline font-medium hover:text-gray-100 transition-colors"
               >
                 Try as Guest (no account required)
@@ -237,32 +237,32 @@ export default function LandingPage() {
           
           <div className="grid md:grid-cols-2 gap-8 mt-16">
             <FeatureCard 
-              icon={<Zap className="w-6 h-6" />}
+              icon={<BoltIcon className="w-6 h-6" />}
               title="Real-time Validation"
               description="Instant feedback on file format, size, dimensions, and naming conventions. Know immediately if your documents meet requirements."
             />
             <FeatureCard 
-              icon={<RefreshCw className="w-6 h-6" />}
+              icon={<ArrowPathIcon className="w-6 h-6" />}
               title="Dynamic Schema Loading"
               description="Our system automatically loads the latest document requirements for each exam type, ensuring you're always compliant."
             />
             <FeatureCard 
-              icon={<Smartphone className="w-6 h-6" />}
+              icon={<DevicePhoneMobileIcon className="w-6 h-6" />}
               title="Mobile-Friendly"
               description="Upload and validate documents from any device. Perfect for students on the go who need quick document processing."
             />
             <FeatureCard 
-              icon={<Shield className="w-6 h-6" />}
+              icon={<ShieldCheckIcon className="w-6 h-6" />}
               title="Secure Processing"
               description="Your documents are processed securely and never stored permanently. Privacy and security are our top priorities."
             />
             <FeatureCard 
-              icon={<FileText className="w-6 h-6" />}
+              icon={<DocumentTextIcon className="w-6 h-6" />}
               title="Roll Number Packaging"
               description="Automatically organize your documents with proper roll number naming and folder structure required by exam boards."
             />
             <FeatureCard 
-              icon={<Settings className="w-6 h-6" />}
+              icon={<CogIcon className="w-6 h-6" />}
               title="CLI Integration"
               description="Advanced users can leverage our command-line interface for batch processing and automated workflows."
             />
@@ -369,4 +369,6 @@ export default function LandingPage() {
       </footer>
     </div>
   );
-}
+};
+
+export default LandingPage;
