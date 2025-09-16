@@ -1,4 +1,9 @@
-import React, { useState, useEffect } from 'react';
+'use client';
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { useSession, signOut } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { 
   Upload, 
   FileText, 
@@ -36,11 +41,15 @@ import {
   Home,
   LogOut
 } from 'lucide-react';
+import { DraftsList } from '@/components/draft/DraftsList';
+import { draftService, DraftData } from '@/features/draft/draftService';
+import { DocumentStorageService } from '@/features/storage/DocumentStorageService';
+import toast from 'react-hot-toast';
 
 interface Document {
   id: string;
   name: string;
-  examType: 'UPSC' | 'SSC' | 'IELTS' | 'Other';
+  examType: string;
   status: 'validated' | 'processing' | 'failed' | 'pending' | 'enhancing';
   uploadDate: string;
   size: string;
@@ -48,13 +57,15 @@ interface Document {
   location: 'drive' | 'local';
   thumbnail?: string;
   processingStage?: string;
+  isProcessing?: boolean;
 }
 
 interface User {
+  id?: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
   isAuthenticated: boolean;
-  name?: string;
-  email?: string;
-  avatar?: string;
   driveConnected?: boolean;
   storageUsed?: number;
   storageLimit?: number;
@@ -68,7 +79,18 @@ interface ProcessingJob {
   estimatedTime?: string;
 }
 
+interface Notification {
+  id: string;
+  type: 'success' | 'warning' | 'info' | 'error';
+  message: string;
+  time: string;
+}
+
 const Dashboard: React.FC = () => {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  
+  // Component state
   const [activeSection, setActiveSection] = useState<'overview' | 'upload' | 'documents' | 'packages' | 'analytics' | 'settings'>('overview');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -77,84 +99,120 @@ const Dashboard: React.FC = () => {
   const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  
+  // Data state
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [processingJobs, setProcessingJobs] = useState<ProcessingJob[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [drafts, setDrafts] = useState<DraftData[]>([]);
 
-  // Mock data
-  const [user] = useState<User>({
-    isAuthenticated: true,
-    name: 'Alex Johnson',
-    email: 'alex@example.com',
-    avatar: '/api/placeholder/32/32',
-    driveConnected: true,
+  // Initialize storage service
+  const [storageService] = useState(() => new DocumentStorageService());
+
+  // User object based on session
+  const user: User = {
+    id: (session?.user as any)?.id || undefined,
+    name: session?.user?.name || null,
+    email: session?.user?.email || null,
+    image: session?.user?.image || null,
+    isAuthenticated: !!session?.user,
+    driveConnected: !!session?.user,
     storageUsed: 2.4,
     storageLimit: 15
-  });
+  };
 
-  const [documents] = useState<Document[]>([
-    {
-      id: '1',
-      name: 'UPSC_Application_Form.pdf',
-      examType: 'UPSC',
-      status: 'validated',
-      uploadDate: '2024-01-15',
-      size: '2.4 MB',
-      validationScore: 98,
-      location: 'drive',
-      thumbnail: '/api/placeholder/150/200'
-    },
-    {
-      id: '2',
-      name: 'SSC_Documents_Package.zip',
-      examType: 'SSC',
-      status: 'processing',
-      uploadDate: '2024-01-14',
-      size: '5.1 MB',
-      location: 'drive',
-      processingStage: 'Enhancing images...'
-    },
-    {
-      id: '3',
-      name: 'IELTS_Registration.pdf',
-      examType: 'IELTS',
-      status: 'failed',
-      uploadDate: '2024-01-13',
-      size: '1.8 MB',
-      validationScore: 45,
-      location: 'local'
-    },
-    {
-      id: '4',
-      name: 'Additional_Documents.pdf',
-      examType: 'Other',
-      status: 'enhancing',
-      uploadDate: '2024-01-12',
-      size: '3.2 MB',
-      location: 'drive',
-      processingStage: 'Analyzing content...'
+  // Handle hydration
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Load user data on mount
+  useEffect(() => {
+    if (mounted) {
+      loadUserData();
     }
-  ]);
+  }, [mounted, session]);
 
-  const [processingJobs] = useState<ProcessingJob[]>([
-    {
-      id: '1',
-      documentName: 'SSC_Documents_Package.zip',
-      stage: 'enhance',
-      progress: 65,
-      estimatedTime: '2 mins'
-    },
-    {
-      id: '2',
-      documentName: 'Additional_Documents.pdf',
-      stage: 'analyze',
-      progress: 30,
-      estimatedTime: '4 mins'
+  const loadUserData = useCallback(async () => {
+    try {
+      // Load user's drafts
+      const userDrafts = await draftService.getAllDrafts(user.email || undefined);
+      setDrafts(userDrafts);
+
+      // Load user documents from storage service
+      const userDocuments = await storageService.getUserDocuments(
+        user.id, 
+        undefined, // guestSessionId - will implement later
+        10 // limit
+      );
+      
+      setDocuments(userDocuments);
+
+      // Set up appropriate notifications
+      if (user.isAuthenticated) {
+        setNotifications([
+          { 
+            id: '1', 
+            type: 'success', 
+            message: `Welcome back! You have ${userDrafts.length} saved drafts.`, 
+            time: '2 mins ago' 
+          }
+        ]);
+      } else {
+        setNotifications([
+          { 
+            id: '1', 
+            type: 'info', 
+            message: 'Guest session active. Files are processed locally and not saved permanently.', 
+            time: 'now' 
+          }
+        ]);
+        
+        if (userDrafts.length > 0) {
+          setNotifications(prev => [
+            ...prev,
+            {
+              id: '2',
+              type: 'warning',
+              message: `${userDrafts.length} session draft(s) found. Consider creating an account to save permanently.`,
+              time: 'now'
+            }
+          ]);
+        }
+      }
+
+      // Mock processing jobs if there are any pending documents
+      const pendingDocs = userDocuments.filter(doc => ['processing', 'enhancing', 'pending'].includes(doc.status));
+      if (pendingDocs.length > 0) {
+        setProcessingJobs(
+          pendingDocs.map((doc, index) => ({
+            id: `job_${doc.id}`,
+            documentName: doc.name,
+            stage: index % 2 === 0 ? 'enhance' : 'analyze',
+            progress: Math.floor(Math.random() * 80) + 10, // 10-90%
+            estimatedTime: `${Math.floor(Math.random() * 5) + 1} mins`
+          }))
+        );
+      }
+
+    } catch (error) {
+      console.error('Failed to load user data:', error);
+      toast.error('Failed to load dashboard data');
+      
+      // Set minimal error state
+      setDocuments([]);
+      setDrafts([]);
+      setNotifications([
+        {
+          id: 'error',
+          type: 'error',
+          message: 'Failed to load dashboard data. Please refresh the page.',
+          time: 'now'
+        }
+      ]);
     }
-  ]);
-
-  const [notifications] = useState([
-    { id: '1', type: 'success', message: 'UPSC Application validated successfully', time: '2 mins ago' },
-    { id: '2', type: 'warning', message: 'IELTS document failed validation', time: '1 hour ago' },
-    { id: '3', type: 'info', message: 'Storage usage at 80%', time: '2 hours ago' }
-  ]);
+  }, [user.email, user.isAuthenticated]);
 
   const sidebarItems = [
     { id: 'overview', label: 'Overview', icon: Home },
@@ -188,6 +246,15 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const handleSignOut = async () => {
+    if (user.isAuthenticated) {
+      await signOut({ callbackUrl: '/' });
+    } else {
+      // Guest mode - just redirect to home
+      router.push('/');
+    }
+  };
+
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(true);
@@ -201,7 +268,15 @@ const Dashboard: React.FC = () => {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
-    // Handle file drop logic here
+    // Redirect to upload page for actual file handling
+    router.push('/upload');
+  };
+
+  const getUserDisplayName = () => {
+    if (user.name) {
+      return user.name.split(' ')[0]; // First name only
+    }
+    return user.isAuthenticated ? 'User' : 'Guest';
   };
 
   const StatsCard = ({ title, value, change, icon: Icon, color }: any) => (
@@ -230,24 +305,31 @@ const Dashboard: React.FC = () => {
         <Activity className="w-5 h-5 text-gray-400" />
       </div>
       <div className="space-y-4">
-        {processingJobs.map((job) => (
-          <div key={job.id} className="border rounded-lg p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-900">{job.documentName}</span>
-              <span className="text-xs text-gray-500">{job.estimatedTime} remaining</span>
-            </div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-gray-600 capitalize">{job.stage} stage</span>
-              <span className="text-xs font-medium text-gray-900">{job.progress}%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-gradient-to-r from-purple-500 to-blue-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${job.progress}%` }}
-              />
-            </div>
+        {processingJobs.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <Activity className="w-8 h-8 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">No active processing jobs</p>
           </div>
-        ))}
+        ) : (
+          processingJobs.map((job) => (
+            <div key={job.id} className="border rounded-lg p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-900">{job.documentName}</span>
+                <span className="text-xs text-gray-500">{job.estimatedTime} remaining</span>
+              </div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-600 capitalize">{job.stage} stage</span>
+                <span className="text-xs font-medium text-gray-900">{job.progress}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div 
+                  className="bg-gradient-to-r from-purple-500 to-blue-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${job.progress}%` }}
+                />
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
@@ -338,7 +420,7 @@ const Dashboard: React.FC = () => {
 
   const UploadZone = () => (
     <div 
-      className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 ${
+      className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer ${
         dragOver 
           ? 'border-purple-400 bg-purple-50' 
           : 'border-gray-300 hover:border-purple-400 hover:bg-gray-50'
@@ -346,6 +428,7 @@ const Dashboard: React.FC = () => {
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
+      onClick={() => router.push('/upload')}
     >
       <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
       <h3 className="text-lg font-medium text-gray-900 mb-2">Upload Documents</h3>
@@ -367,41 +450,79 @@ const Dashboard: React.FC = () => {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Welcome back, {user.name}!</h1>
-                <p className="text-gray-600 mt-1">Here's what's happening with your documents today.</p>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  Welcome back, {getUserDisplayName()}!
+                </h1>
+                <p className="text-gray-600 mt-1">
+                  {user.isAuthenticated 
+                    ? "Here's what's happening with your documents today."
+                    : "You're in guest mode. Files are processed locally and not saved permanently."
+                  }
+                </p>
               </div>
-              <button className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:from-purple-700 hover:to-blue-700 transition-all flex items-center gap-2">
+              <Link
+                href="/upload"
+                className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:from-purple-700 hover:to-blue-700 transition-all flex items-center gap-2"
+              >
                 <Plus className="w-4 h-4" />
                 New Upload
-              </button>
+              </Link>
             </div>
+
+            {!user.isAuthenticated && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex items-start space-x-3">
+                  <Shield className="w-5 h-5 text-yellow-600 mt-0.5" />
+                  <div>
+                    <h4 className="font-medium text-yellow-800 mb-1">Guest Mode Active</h4>
+                    <p className="text-sm text-yellow-700 mb-3">
+                      Your files are processed locally and won't be saved permanently. Create an account to enable cloud storage and document history.
+                    </p>
+                    <div className="flex items-center space-x-3">
+                      <Link
+                        href="/auth/signup"
+                        className="text-sm bg-yellow-600 text-white px-3 py-1 rounded hover:bg-yellow-700 transition-colors"
+                      >
+                        Create Account
+                      </Link>
+                      <Link
+                        href="/auth/signin"
+                        className="text-sm text-yellow-600 hover:text-yellow-700"
+                      >
+                        Sign In
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <StatsCard
                 title="Total Documents"
-                value="24"
-                change="+12%"
+                value={documents.length.toString()}
+                change={documents.length > 0 ? "+12%" : undefined}
                 icon={FileText}
                 color="bg-gradient-to-r from-blue-500 to-blue-600"
               />
               <StatsCard
                 title="Validated"
-                value="18"
-                change="+8%"
+                value={documents.filter(d => d.status === 'validated').length.toString()}
+                change={documents.filter(d => d.status === 'validated').length > 0 ? "+8%" : undefined}
                 icon={CheckCircle}
                 color="bg-gradient-to-r from-green-500 to-green-600"
               />
               <StatsCard
                 title="Processing"
-                value="3"
+                value={documents.filter(d => ['processing', 'enhancing'].includes(d.status)).length.toString()}
                 icon={RefreshCw}
                 color="bg-gradient-to-r from-purple-500 to-purple-600"
               />
               <StatsCard
-                title="Storage Used"
-                value={`${user.storageUsed}GB`}
-                change={`${Math.round((user.storageUsed! / user.storageLimit!) * 100)}%`}
-                icon={HardDrive}
+                title={user.isAuthenticated ? "Storage Used" : "Session Active"}
+                value={user.isAuthenticated ? `${user.storageUsed}GB` : "Local"}
+                change={user.isAuthenticated ? `${Math.round((user.storageUsed! / user.storageLimit!) * 100)}%` : undefined}
+                icon={user.isAuthenticated ? HardDrive : Shield}
                 color="bg-gradient-to-r from-orange-500 to-orange-600"
               />
             </div>
@@ -409,31 +530,56 @@ const Dashboard: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <ProcessingQueue />
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Documents</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  {user.isAuthenticated ? 'Recent Documents' : 'Session Documents'}
+                </h3>
                 <div className="space-y-3">
-                  {documents.slice(0, 3).map((doc) => (
-                    <div key={doc.id} className="flex items-center space-x-3 p-3 hover:bg-gray-50 rounded-lg">
-                      <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center">
-                        <FileText className="w-4 h-4 text-gray-600" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{doc.name}</p>
-                        <p className="text-xs text-gray-500">{doc.examType} • {doc.uploadDate}</p>
-                      </div>
-                      <div className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(doc.status)}`}>
-                        {doc.status}
-                      </div>
+                  {documents.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No documents yet</p>
+                      <Link
+                        href="/upload"
+                        className="text-sm text-purple-600 hover:text-purple-700 mt-2 inline-block"
+                      >
+                        Upload your first document
+                      </Link>
                     </div>
-                  ))}
+                  ) : (
+                    documents.slice(0, 3).map((doc) => (
+                      <div key={doc.id} className="flex items-center space-x-3 p-3 hover:bg-gray-50 rounded-lg">
+                        <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center">
+                          <FileText className="w-4 h-4 text-gray-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{doc.name}</p>
+                          <p className="text-xs text-gray-500">{doc.examType} • {doc.uploadDate}</p>
+                        </div>
+                        <div className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(doc.status)}`}>
+                          {doc.status}
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
-                <button 
-                  onClick={() => setActiveSection('documents')}
-                  className="block text-center text-sm text-purple-600 hover:text-purple-700 mt-4 font-medium cursor-pointer"
-                >
-                  View All Documents
-                </button>
+                {documents.length > 0 && (
+                  <button 
+                    onClick={() => setActiveSection('documents')}
+                    className="block text-center text-sm text-purple-600 hover:text-purple-700 mt-4 font-medium cursor-pointer"
+                  >
+                    View All Documents
+                  </button>
+                )}
               </div>
             </div>
+
+            {/* Drafts Section */}
+            {drafts.length > 0 && (
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Saved Drafts</h3>
+                <DraftsList />
+              </div>
+            )}
           </div>
         );
 
@@ -442,31 +588,42 @@ const Dashboard: React.FC = () => {
           <div className="space-y-6">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Upload Documents</h1>
-              <p className="text-gray-600 mt-1">Upload your exam documents for validation and enhancement.</p>
+              <p className="text-gray-600 mt-1">
+                Upload your exam documents for validation and enhancement.
+              </p>
             </div>
             <UploadZone />
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-white p-4 rounded-lg border border-gray-200">
+              <Link
+                href="/select?exam=upsc"
+                className="bg-white p-4 rounded-lg border border-gray-200 hover:border-purple-300 transition-colors group"
+              >
                 <h4 className="font-medium text-gray-900 mb-2">UPSC Templates</h4>
                 <p className="text-sm text-gray-600 mb-3">Pre-configured for UPSC document requirements</p>
-                <button className="w-full bg-blue-50 text-blue-600 py-2 rounded-lg text-sm font-medium hover:bg-blue-100">
+                <div className="w-full bg-blue-50 text-blue-600 py-2 rounded-lg text-sm font-medium hover:bg-blue-100 text-center">
                   Use Template
-                </button>
-              </div>
-              <div className="bg-white p-4 rounded-lg border border-gray-200">
+                </div>
+              </Link>
+              <Link
+                href="/select?exam=ssc"
+                className="bg-white p-4 rounded-lg border border-gray-200 hover:border-purple-300 transition-colors group"
+              >
                 <h4 className="font-medium text-gray-900 mb-2">SSC Templates</h4>
                 <p className="text-sm text-gray-600 mb-3">Optimized for SSC examination documents</p>
-                <button className="w-full bg-green-50 text-green-600 py-2 rounded-lg text-sm font-medium hover:bg-green-100">
+                <div className="w-full bg-green-50 text-green-600 py-2 rounded-lg text-sm font-medium hover:bg-green-100 text-center">
                   Use Template
-                </button>
-              </div>
-              <div className="bg-white p-4 rounded-lg border border-gray-200">
+                </div>
+              </Link>
+              <Link
+                href="/select?exam=ielts"
+                className="bg-white p-4 rounded-lg border border-gray-200 hover:border-purple-300 transition-colors group"
+              >
                 <h4 className="font-medium text-gray-900 mb-2">IELTS Templates</h4>
                 <p className="text-sm text-gray-600 mb-3">Designed for IELTS document validation</p>
-                <button className="w-full bg-purple-50 text-purple-600 py-2 rounded-lg text-sm font-medium hover:bg-purple-100">
+                <div className="w-full bg-purple-50 text-purple-600 py-2 rounded-lg text-sm font-medium hover:bg-purple-100 text-center">
                   Use Template
-                </button>
-              </div>
+                </div>
+              </Link>
             </div>
           </div>
         );
@@ -477,7 +634,9 @@ const Dashboard: React.FC = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Documents</h1>
-                <p className="text-gray-600 mt-1">Manage and organize your uploaded documents.</p>
+                <p className="text-gray-600 mt-1">
+                  Manage and organize your {user.isAuthenticated ? 'uploaded' : 'session'} documents.
+                </p>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="relative">
@@ -517,11 +676,26 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
 
-            <div className={`grid gap-6 ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'grid-cols-1'}`}>
-              {documents.map((doc) => (
-                <DocumentCard key={doc.id} doc={doc} />
-              ))}
-            </div>
+            {documents.length === 0 ? (
+              <div className="text-center py-12">
+                <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No documents yet</h3>
+                <p className="text-gray-600 mb-6">Start by uploading your first document for processing.</p>
+                <Link
+                  href="/upload"
+                  className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:from-purple-700 hover:to-blue-700 transition-all inline-flex items-center gap-2"
+                >
+                  <Upload className="w-4 h-4" />
+                  Upload Document
+                </Link>
+              </div>
+            ) : (
+              <div className={`grid gap-6 ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'grid-cols-1'}`}>
+                {documents.map((doc) => (
+                  <DocumentCard key={doc.id} doc={doc} />
+                ))}
+              </div>
+            )}
           </div>
         );
 
@@ -534,6 +708,18 @@ const Dashboard: React.FC = () => {
         );
     }
   };
+
+  // Don't render until hydrated
+  if (!mounted || status === 'loading') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -609,9 +795,11 @@ const Dashboard: React.FC = () => {
                 className="p-2 hover:bg-gray-100 rounded-lg relative"
               >
                 <Bell className="w-5 h-5 text-gray-600" />
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                  {notifications.length}
-                </span>
+                {notifications.length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                    {notifications.length}
+                  </span>
+                )}
               </button>
 
               {showNotifications && (
@@ -624,7 +812,8 @@ const Dashboard: React.FC = () => {
                       <div className="flex items-start space-x-3">
                         <div className={`w-2 h-2 rounded-full mt-2 ${
                           notification.type === 'success' ? 'bg-green-500' :
-                          notification.type === 'warning' ? 'bg-yellow-500' : 'bg-blue-500'
+                          notification.type === 'warning' ? 'bg-yellow-500' :
+                          notification.type === 'error' ? 'bg-red-500' : 'bg-blue-500'
                         }`} />
                         <div className="flex-1">
                           <p className="text-sm text-gray-900">{notification.message}</p>
@@ -634,8 +823,11 @@ const Dashboard: React.FC = () => {
                     </div>
                   ))}
                   <div className="px-4 py-2 text-center">
-                    <button className="text-sm text-purple-600 hover:text-purple-700 font-medium">
-                      View All Notifications
+                    <button 
+                      onClick={() => setShowNotifications(false)}
+                      className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+                    >
+                      Close
                     </button>
                   </div>
                 </div>
@@ -650,29 +842,41 @@ const Dashboard: React.FC = () => {
                     <Cloud className="w-4 h-4 text-green-500" />
                     <span className="text-xs text-gray-600">Drive Connected</span>
                   </div>
-                  <img 
-                    src={user.avatar} 
-                    alt={user.name}
-                    className="w-8 h-8 rounded-full"
-                  />
+                  {user.image ? (
+                    <img 
+                      src={user.image} 
+                      alt={user.name || 'User'}
+                      className="w-8 h-8 rounded-full"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                      <User className="w-4 h-4 text-purple-600" />
+                    </div>
+                  )}
                   <div className="hidden md:block">
                     <div className="text-sm font-medium text-gray-900">{user.name}</div>
                     <div className="text-xs text-gray-500">{user.email}</div>
                   </div>
-                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                  <button
+                    onClick={handleSignOut}
+                    className="p-2 hover:bg-gray-100 rounded-lg"
+                    title="Sign Out"
+                  >
+                    <LogOut className="w-4 h-4 text-gray-400" />
+                  </button>
                 </>
               ) : (
                 <>
                   <div className="flex items-center space-x-2">
                     <Shield className="w-4 h-4 text-yellow-500" />
                     <span className="text-xs text-gray-600">Guest Session</span>
-                    <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
-                      25:30 remaining
-                    </span>
                   </div>
-                  <button className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-purple-700 hover:to-blue-700 transition-all">
+                  <Link
+                    href="/auth/signin"
+                    className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-purple-700 hover:to-blue-700 transition-all"
+                  >
                     Sign In
-                  </button>
+                  </Link>
                 </>
               )}
             </div>
@@ -709,30 +913,16 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Floating Action Button (Mobile) */}
-      <button className="fixed bottom-20 right-4 md:hidden w-14 h-14 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-full shadow-lg flex items-center justify-center hover:shadow-xl transition-all">
+      <Link
+        href="/upload"
+        className="fixed bottom-20 right-4 md:hidden w-14 h-14 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-full shadow-lg flex items-center justify-center hover:shadow-xl transition-all"
+      >
         <Plus className="w-6 h-6" />
-      </button>
+      </Link>
 
-      {/* Global Loading Overlay (if needed) */}
-      {/* <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-        <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
-          <div className="flex items-center space-x-3">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
-            <span className="text-gray-900">Processing documents...</span>
-          </div>
-        </div>
-      </div> */}
-
-      {/* Toast Notifications */}
+      {/* Toast Notifications Area */}
       <div className="fixed top-20 right-4 space-y-2 z-40">
-        {/* Example toast - you would map over actual toast notifications here */}
-        {/* <div className="bg-green-500 text-white px-4 py-3 rounded-lg shadow-lg flex items-center space-x-2 max-w-sm">
-          <CheckCircle className="w-5 h-5" />
-          <span>Document validated successfully!</span>
-          <button className="ml-auto">
-            <X className="w-4 h-4" />
-          </button>
-        </div> */}
+        {/* React Hot Toast will render here */}
       </div>
     </div>
   );

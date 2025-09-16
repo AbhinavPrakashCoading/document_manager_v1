@@ -40,21 +40,27 @@ model Session {
 
 model User {
   id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique
+  name          String?   // Personal data (encrypt at app level)
+  email         String    @unique // Email (encrypt at app level)
   emailVerified DateTime?
   image         String?
-  password      String?   // For email/password auth
+  password      String?   // For email/password auth - hashed
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  
+  // Drive Integration
+  googleDriveToken    String?   // Encrypted OAuth token
+  googleDriveRefresh  String?   // Encrypted refresh token  
+  driveRootFolderId   String?   // User's dedicated folder in Drive
   
   // Relations
   accounts      Account[]
   sessions      Session[]
   documents     Document[]
+  documentZips  DocumentZip[]
   
-  // User preferences
-  rollNumber    String?
+  // User preferences (encrypt at app level)
+  rollNumber    String?   // Roll number
   fullName      String?   // For DOP bands
   examType      String?   // Last selected exam
 }
@@ -87,7 +93,167 @@ model Document {
   validationStatus String   @default("pending") // pending, valid, invalid
   validationErrors String?  // JSON string of errors array
   
+  // Evolved Storage Protocol Relations
+  archives    DocumentArchive[]
+  masters     DocumentMaster[]
+  zips        DocumentZip[]
+  
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ARCHIVES: Exact files uploaded by users (Google Drive for auth users)
+model DocumentArchive {
+  id           String   @id @default(cuid())
+  documentId   String
+  filename     String   // Original filename (encrypt at app level)
+  fileHash     String   // SHA-256 hash for integrity
+  
+  // Cloud Storage (for logged-in users)
+  driveFileId  String?  // Google Drive file ID
+  drivePath    String?  // Path within user's Drive folder
+  
+  // Local Storage (for guests - temporary)
+  localPath    String?  // Local temp path (guests only)
+  
+  fileSize     Int      // Original file size in bytes
+  mimeType     String   // MIME type
+  metadata     String?  // JSON metadata (EXIF, etc.) - encrypted
+  createdAt    DateTime @default(now())
+  
+  // Archive integrity
+  checksumMD5  String?  // MD5 checksum
+  checksumSHA1 String?  // SHA-1 checksum
+  
+  // Storage location indicator
+  storageType  String   @default("drive") // "drive" | "local" | "temp"
+  
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  
+  @@index([documentId])
+  @@index([fileHash])
+  @@index([driveFileId])
+}
+
+// MASTERS: AI/ML enhanced high-quality versions (Google Drive for auth users)
+model DocumentMaster {
+  id             String   @id @default(cuid())
+  documentId     String
+  filename       String   // Enhanced filename (encrypt at app level)
+  
+  // Cloud Storage (for logged-in users)  
+  driveFileId    String?  // Google Drive file ID
+  drivePath      String?  // Path within user's Drive folder
+  
+  // Local Storage (for guests - temporary)
+  localPath      String?  // Local temp path (guests only)
+  
+  fileSize       Int      // Enhanced file size
+  
+  // Enhancement details
+  originalWidth  Int?     // Original dimensions
+  originalHeight Int?
+  enhancedWidth  Int?     // Enhanced dimensions  
+  enhancedHeight Int?
+  
+  // AI/ML Processing pipeline
+  enhancementPipeline String? // JSON array of applied enhancements - encrypted
+  qualityScore       Float?  // AI-assessed quality score (0-1)
+  processingTime     Int?    // Time taken for enhancement in ms
+  
+  // Enhancement types applied
+  isUpscaled        Boolean @default(false)
+  isDenoised        Boolean @default(false)
+  isContrastAdjusted Boolean @default(false)
+  isSharpened       Boolean @default(false)
+  isColorCorrected  Boolean @default(false)
+  
+  // AI Analysis results (encrypted)
+  textExtracted     String? // OCR extracted text (encrypt at app level)
+  faceDetected      Boolean @default(false)
+  documentAnalysis  String? // JSON analysis results (encrypt at app level)
+  
+  // Storage location indicator
+  storageType       String  @default("drive") // "drive" | "local" | "temp"
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  
+  @@index([documentId])
+  @@index([qualityScore])
+  @@index([driveFileId])
+}
+
+// ZIPS: Schema-compliant packaged documents (Drive OR local for auth users)
+model DocumentZip {
+  id              String   @id @default(cuid())
+  documentId      String?  // Optional single document relation
+  userId          String   // User who created the zip
+  examType        String   // SSC, UPSC, IELTS
+  
+  // Zip file details
+  filename        String   // Generated zip filename (encrypt at app level)
+  
+  // Cloud Storage (for logged-in users)
+  driveFileId     String?  // Google Drive file ID  
+  drivePath       String?  // Path within user's Drive folder
+  
+  // Local Storage (configurable for auth users, always for guests)
+  localPath       String?  // Local storage path
+  
+  fileSize        Int      // Zip file size
+  fileHash        String   // SHA-256 hash of zip
+  
+  // Schema compliance
+  schemaVersion   String   // Schema version used
+  validationPassed Boolean @default(false)
+  includedDocuments String // JSON array of included document IDs (encrypt at app level)
+  
+  // Generation metadata (encrypted)
+  rollNumber      String?  // Associated roll number (encrypt at app level)
+  generatedAt     DateTime @default(now())
+  expiresAt       DateTime? // Optional expiry
+  downloadCount   Int      @default(0)
+  
+  // Storage location indicator  
+  storageType     String   @default("drive") // "drive" | "local" | "temp"
+  
+  // Relations
+  document Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, examType])
+  @@index([fileHash])
+  @@index([driveFileId])
+}
+
+// Enhancement Processing Queue
+model EnhancementJob {
+  id            String   @id @default(cuid())
+  documentId    String
+  archiveId     String
+  status        String   @default("pending") // pending, processing, completed, failed
+  
+  // Job configuration
+  enhancementType String // upscale, denoise, ocr, analysis
+  priority        Int    @default(5) // 1-10, lower = higher priority
+  
+  // Processing details
+  startedAt       DateTime?
+  completedAt     DateTime?
+  errorMessage    String?
+  retryCount      Int      @default(0)
+  
+  // Resource usage
+  processingTime  Int?     // Time in milliseconds
+  memoryUsed      Int?     // Peak memory usage in MB
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([status, priority])
+  @@index([documentId])
 }
 
 model AuditLog {

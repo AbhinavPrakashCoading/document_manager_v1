@@ -15,7 +15,7 @@ export default withAuth(
         const publicRoutes = ['/auth/signin', '/auth/signup', '/']
         
         // Guest-accessible routes (core app features)
-        const guestRoutes = ['/select', '/upload', '/confirm']
+        const guestRoutes = ['/select', '/upload', '/confirm', '/dashboard']
         
         // If it's a public route, allow access
         if (publicRoutes.includes(pathname)) {

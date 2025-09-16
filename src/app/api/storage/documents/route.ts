@@ -1,0 +1,173 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth/next'
+import { storageService } from '@/features/storage/DocumentStorageService'
+import { enhancementPipeline } from '@/features/storage/DocumentEnhancementPipeline'
+import { prisma } from '@/lib/prisma'
+import { authOptions } from '@/lib/auth'
+
+/**
+ * POST /api/storage/upload
+ * Upload document and create archive + master versions
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    const formData = await request.formData()
+    const file = formData.get('file') as File
+    const documentType = formData.get('documentType') as string
+    const examType = formData.get('examType') as string
+    const enhancementTypes = formData.get('enhancementTypes') as string
+
+    if (!file || !documentType || !examType) {
+      return NextResponse.json({ 
+        error: 'Missing required fields: file, documentType, examType' 
+      }, { status: 400 })
+    }
+
+    // Create document record
+    const document = await prisma.document.create({
+      data: {
+        userId: user.id,
+        filename: file.name,
+        originalName: file.name,
+        fileType: file.type,
+        fileSize: file.size,
+        documentType,
+        examType
+      }
+    })
+
+    // Create archive (original file)
+    const archive = await storageService.archiveDocument(
+      document.id,
+      file,
+      file.name,
+      {
+        uploadedAt: new Date().toISOString(),
+        userAgent: request.headers.get('user-agent'),
+        originalSize: file.size
+      }
+    )
+
+    // Queue for master creation if enhancement types specified
+    let enhancementJob = null
+    if (enhancementTypes) {
+      const types = enhancementTypes.split(',').filter(Boolean)
+      if (types.length > 0) {
+        enhancementJob = await storageService.createMaster(
+          document.id,
+          archive.id,
+          types
+        )
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      document: {
+        id: document.id,
+        filename: document.filename,
+        documentType: document.documentType,
+        examType: document.examType
+      },
+      archive: {
+        id: archive.id,
+        fileHash: archive.fileHash,
+        fileSize: archive.fileSize
+      },
+      enhancementJob: enhancementJob ? {
+        id: enhancementJob.id,
+        status: enhancementJob.status,
+        enhancementType: enhancementJob.enhancementType
+      } : null
+    })
+
+  } catch (error) {
+    console.error('Upload error:', error)
+    return NextResponse.json({ 
+      error: 'Upload failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
+  }
+}
+
+/**
+ * GET /api/storage/documents
+ * Get user's documents with their archives and masters
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const examType = searchParams.get('examType')
+    const documentType = searchParams.get('documentType')
+    const limit = parseInt(searchParams.get('limit') || '50')
+    const offset = parseInt(searchParams.get('offset') || '0')
+
+    const documents = await prisma.document.findMany({
+      where: {
+        userId: user.id,
+        ...(examType && { examType }),
+        ...(documentType && { documentType })
+      },
+      // TODO: Enable after running database migration
+      // include: {
+      //   archives: { select: { id: true, filename: true, fileSize: true, fileHash: true, createdAt: true } },
+      //   masters: { select: { id: true, filename: true, fileSize: true, qualityScore: true, createdAt: true } },
+      //   zips: { select: { id: true, filename: true, fileSize: true, downloadCount: true, generatedAt: true } }
+      // },
+      orderBy: { uploadDate: 'desc' },
+      take: limit,
+      skip: offset
+    })
+
+    const totalCount = await prisma.document.count({
+      where: {
+        userId: user.id,
+        ...(examType && { examType }),
+        ...(documentType && { documentType })
+      }
+    })
+
+    return NextResponse.json({
+      documents,
+      pagination: {
+        total: totalCount,
+        limit,
+        offset,
+        hasMore: offset + limit < totalCount
+      }
+    })
+
+  } catch (error) {
+    console.error('Get documents error:', error)
+    return NextResponse.json({ 
+      error: 'Failed to retrieve documents',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
+  }
+}
