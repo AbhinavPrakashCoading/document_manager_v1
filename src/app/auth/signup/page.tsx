@@ -54,7 +54,7 @@ export default function SignUpPage() {
       })
 
       if (result?.ok) {
-        router.push('/select')
+        router.push('/dashboard')
       } else {
         router.push('/auth/signin')
       }
@@ -68,7 +68,7 @@ export default function SignUpPage() {
   const handleGoogleSignIn = async () => {
     setLoading(true)
     try {
-      await signIn('google', { callbackUrl: '/select' })
+      await signIn('google', { callbackUrl: '/dashboard' })
     } catch (error) {
       toast.error('Something went wrong')
       setLoading(false)
