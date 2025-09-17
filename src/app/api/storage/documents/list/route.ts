@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/lib/auth'
+// Temporarily disabled auth while auth system is being rebuilt
+// import { getServerSession } from 'next-auth/next'
+// import { authOptions } from '@/lib/auth'
 
 /**
  * GET /api/storage/documents/list
@@ -8,10 +9,11 @@ import { authOptions } from '@/lib/auth'
  */
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    // Temporarily bypass auth while auth system is being rebuilt
+    // const session = await getServerSession(authOptions)
+    // if (!session?.user?.email) {
+    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // }
 
     // Return mock data for now to ensure the Dashboard works
     const mockDocuments = [
@@ -28,7 +30,7 @@ export async function GET(request: NextRequest) {
         thumbnail: undefined,
         processingStage: undefined,
         downloadUrl: undefined,
-        userId: session.user.email, // Use email as userId for now
+        userId: 'guest-user', // Use guest user while auth is bypassed
         isProcessing: false
       },
       {
@@ -44,8 +46,24 @@ export async function GET(request: NextRequest) {
         thumbnail: undefined,
         processingStage: 'analyzing',
         downloadUrl: undefined,
-        userId: session.user.email, // Use email as userId for now
+        userId: 'guest-user', // Use guest user while auth is bypassed
         isProcessing: true
+      },
+      {
+        id: '3',
+        name: 'AWS RDS Test Document.pdf',
+        examType: 'SSC',
+        status: 'validated' as const,
+        uploadDate: new Date().toISOString(),
+        size: '3.2 MB',
+        fileType: 'application/pdf',
+        validationScore: 88,
+        location: 'drive' as const,
+        thumbnail: undefined,
+        processingStage: undefined,
+        downloadUrl: undefined,
+        userId: 'guest-user',
+        isProcessing: false
       }
     ]
 
