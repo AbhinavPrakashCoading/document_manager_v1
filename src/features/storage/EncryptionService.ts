@@ -148,3 +148,8 @@ export class EncryptionService {
     return this.generateSearchHash(text) === hash
   }
 }
+
+// Field encryption configuration constants
+export const ENCRYPTED_USER_FIELDS = ['name', 'email'] as const
+export const ENCRYPTED_DOCUMENT_FIELDS = ['title', 'filename', 'content'] as const
+export const ENCRYPTED_ZIP_FIELDS = ['filename', 'originalPath'] as const

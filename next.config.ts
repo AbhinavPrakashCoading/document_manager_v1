@@ -28,6 +28,21 @@ const config: NextConfig = {
     { source: "/health", destination: "/api/health" },
     { source: "/ping", destination: "/api/health" },
   ],
+  webpack: (config, { isServer }) => {
+    // Fix for Node.js modules being bundled on client side
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        child_process: false,
+        fs: false,
+        net: false,
+        tls: false,
+        crypto: false,
+      }
+    }
+    
+    return config
+  },
 }
 
 export default env.ANALYZE ? withBundleAnalyzer({ enabled: env.ANALYZE })(config) : config

@@ -43,7 +43,7 @@ import {
 } from 'lucide-react';
 import { DraftsList } from '@/components/draft/DraftsList';
 import { draftService, DraftData } from '@/features/draft/draftService';
-import { DocumentStorageService } from '@/features/storage/DocumentStorageService';
+import { clientStorageService } from '@/features/storage/ClientStorageService';
 import toast from 'react-hot-toast';
 
 interface Document {
@@ -108,7 +108,8 @@ const Dashboard: React.FC = () => {
   const [drafts, setDrafts] = useState<DraftData[]>([]);
 
   // Initialize storage service
-  const [storageService] = useState(() => new DocumentStorageService());
+  // Storage service for API communication
+  const storageService = clientStorageService;
 
   // User object based on session
   const user: User = {
@@ -141,11 +142,7 @@ const Dashboard: React.FC = () => {
       setDrafts(userDrafts);
 
       // Load user documents from storage service
-      const userDocuments = await storageService.getUserDocuments(
-        user.id, 
-        undefined, // guestSessionId - will implement later
-        10 // limit
-      );
+      const userDocuments = await storageService.getUserDocuments();
       
       setDocuments(userDocuments);
 
