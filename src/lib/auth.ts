@@ -12,6 +12,13 @@ export const authOptions: NextAuthOptions = {
       GoogleProvider({
         clientId: process.env.GOOGLE_CLIENT_ID!,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+        authorization: {
+          params: {
+            prompt: "consent",
+            access_type: "offline",
+            response_type: "code"
+          }
+        }
       })
     ] : []),
     CredentialsProvider({
@@ -77,11 +84,43 @@ export const authOptions: NextAuthOptions = {
       return session
     },
     async redirect({ url, baseUrl }) {
-      // Allows relative callback URLs
-      if (url.startsWith("/")) return `${baseUrl}${url}`
-      // Allows callback URLs on the same origin
-      else if (new URL(url).origin === baseUrl) return url
-      // Default redirect to dashboard after sign-in
+      console.log('Auth redirect called:', { url, baseUrl })
+      
+      // If the URL is just the base URL (after sign-in), redirect to dashboard
+      if (url === baseUrl || url === baseUrl + '/') {
+        console.log('Redirecting to dashboard from base URL')
+        return `${baseUrl}/dashboard`
+      }
+      
+      // If it's a relative callback URL, make it absolute and check if it should go to dashboard
+      if (url.startsWith("/")) {
+        const absoluteUrl = `${baseUrl}${url}`
+        // If it's a sign-in related URL, redirect to dashboard
+        if (url.includes('/signin') || url.includes('/signup') || url === '/') {
+          console.log('Redirecting to dashboard from auth page')
+          return `${baseUrl}/dashboard`
+        }
+        return absoluteUrl
+      }
+      
+      // If it's an absolute URL on the same origin, allow it
+      try {
+        const urlObject = new URL(url)
+        const baseUrlObject = new URL(baseUrl)
+        if (urlObject.origin === baseUrlObject.origin) {
+          // If it's pointing to auth pages, redirect to dashboard
+          if (urlObject.pathname.includes('/signin') || urlObject.pathname.includes('/signup') || urlObject.pathname === '/') {
+            console.log('Redirecting to dashboard from same origin auth URL')
+            return `${baseUrl}/dashboard`
+          }
+          return url
+        }
+      } catch (error) {
+        console.error('Error parsing URL in redirect:', error)
+      }
+      
+      // Default fallback - always go to dashboard
+      console.log('Default redirect to dashboard')
       return `${baseUrl}/dashboard`
     },
   },

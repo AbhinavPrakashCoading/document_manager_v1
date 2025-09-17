@@ -79,8 +79,11 @@ export default function LandingPage() {
 
   // Redirect authenticated users to dashboard
   useEffect(() => {
+    console.log('Landing page session check:', { status, session: !!session, user: session?.user?.email })
+    
     if (status === 'authenticated' && session?.user) {
-      router.push('/dashboard');
+      console.log('Redirecting authenticated user to dashboard')
+      router.push('/dashboard')
     }
   }, [session, status, router]);
 

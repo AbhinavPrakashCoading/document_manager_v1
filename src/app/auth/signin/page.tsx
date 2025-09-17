@@ -39,8 +39,14 @@ export default function SignInPage() {
   const handleGoogleSignIn = async () => {
     setLoading(true)
     try {
-      await signIn('google', { callbackUrl: '/dashboard' })
+      console.log('Initiating Google sign-in with callback to dashboard')
+      const result = await signIn('google', { 
+        callbackUrl: '/dashboard',
+        redirect: true // Force redirect
+      })
+      console.log('Google sign-in result:', result)
     } catch (error) {
+      console.error('Google sign-in error:', error)
       toast.error('Something went wrong')
       setLoading(false)
     }
