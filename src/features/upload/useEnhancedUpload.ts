@@ -100,7 +100,7 @@ export function useEnhancedUpload(
       formData.append('enhancementTypes', enhancementTypes.join(','))
     }
 
-    const response = await fetch('/api/storage/documents', {
+    const response = await fetch('/api/storage/documents/upload', {
       method: 'POST',
       body: formData
     })
