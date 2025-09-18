@@ -28,6 +28,7 @@ import {
   TrendingUp,
   Package,
   Menu,
+  AlignJustify,
   X,
   ChevronDown,
   FolderOpen,
@@ -687,12 +688,26 @@ const Dashboard: React.FC = () => {
         sidebarCollapsed ? 'w-16' : 'w-64'
       }`}>
         <div className="p-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
-              <FileText className="w-4 h-4 text-white" />
-            </div>
-            {!sidebarCollapsed && <span className="font-bold text-gray-900">ExamDoc</span>}
-          </div>
+          {sidebarCollapsed ? (
+            // Burger menu when collapsed
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="w-8 h-8 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg flex items-center justify-center hover:shadow-md transition-shadow"
+            >
+              <AlignJustify className="w-4 h-4 text-white" />
+            </button>
+          ) : (
+            // Logo when expanded - clickable to go to Overview
+            <button
+              onClick={() => setActiveSection('overview')}
+              className="flex items-center space-x-3 hover:bg-gray-50 p-2 rounded-lg transition-colors w-full text-left"
+            >
+              <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
+                <FileText className="w-4 h-4 text-white" />
+              </div>
+              <span className="font-bold text-gray-900">ExamDoc</span>
+            </button>
+          )}
         </div>
 
         <nav className="mt-8">
@@ -738,14 +753,7 @@ const Dashboard: React.FC = () => {
       <div className={`fixed top-0 right-0 left-0 bg-white border-b border-gray-200 z-20 transition-all duration-300 ${
         sidebarCollapsed ? 'ml-16' : 'ml-64'
       }`}>
-        <div className="flex items-center justify-between px-6 py-4">
-          <button
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="p-2 hover:bg-gray-100 rounded-lg"
-          >
-            <Menu className="w-5 h-5 text-gray-600" />
-          </button>
-
+        <div className="flex items-center justify-end px-6 py-4">
           <div className="flex items-center space-x-4">
             {/* Notifications */}
             <div className="relative">
