@@ -44,6 +44,7 @@ import {
 import { DraftsList } from '@/components/draft/DraftsList';
 import { draftService, DraftData } from '@/features/draft/draftService';
 import { clientStorageService } from '@/features/storage/ClientStorageService';
+import { EnhancedUploadSection } from '@/components/EnhancedUploadSection';
 import toast from 'react-hot-toast';
 
 interface Document {
@@ -581,49 +582,10 @@ const Dashboard: React.FC = () => {
         );
 
       case 'upload':
-        return (
-          <div className="space-y-6">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Upload Documents</h1>
-              <p className="text-gray-600 mt-1">
-                Upload your exam documents for validation and enhancement.
-              </p>
-            </div>
-            <UploadZone />
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Link
-                href="/select?exam=upsc"
-                className="bg-white p-4 rounded-lg border border-gray-200 hover:border-purple-300 transition-colors group"
-              >
-                <h4 className="font-medium text-gray-900 mb-2">UPSC Templates</h4>
-                <p className="text-sm text-gray-600 mb-3">Pre-configured for UPSC document requirements</p>
-                <div className="w-full bg-blue-50 text-blue-600 py-2 rounded-lg text-sm font-medium hover:bg-blue-100 text-center">
-                  Use Template
-                </div>
-              </Link>
-              <Link
-                href="/select?exam=ssc"
-                className="bg-white p-4 rounded-lg border border-gray-200 hover:border-purple-300 transition-colors group"
-              >
-                <h4 className="font-medium text-gray-900 mb-2">SSC Templates</h4>
-                <p className="text-sm text-gray-600 mb-3">Optimized for SSC examination documents</p>
-                <div className="w-full bg-green-50 text-green-600 py-2 rounded-lg text-sm font-medium hover:bg-green-100 text-center">
-                  Use Template
-                </div>
-              </Link>
-              <Link
-                href="/select?exam=ielts"
-                className="bg-white p-4 rounded-lg border border-gray-200 hover:border-purple-300 transition-colors group"
-              >
-                <h4 className="font-medium text-gray-900 mb-2">IELTS Templates</h4>
-                <p className="text-sm text-gray-600 mb-3">Designed for IELTS document validation</p>
-                <div className="w-full bg-purple-50 text-purple-600 py-2 rounded-lg text-sm font-medium hover:bg-purple-100 text-center">
-                  Use Template
-                </div>
-              </Link>
-            </div>
-          </div>
-        );
+        return <EnhancedUploadSection onFilesUploaded={(files) => {
+          console.log('Files uploaded:', files);
+          toast.success(`${files.length} file(s) ready for processing!`);
+        }} />;
 
       case 'documents':
         return (
