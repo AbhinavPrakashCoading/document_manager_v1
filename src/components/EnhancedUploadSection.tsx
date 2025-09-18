@@ -15,7 +15,7 @@ import {
   Zap
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { schemaProcessingService } from '@/features/schema/SchemaProcessingService';
+import { enhancedDocumentProcessingService } from '@/features/schema/EnhancedDocumentProcessingService';
 
 interface UploadedFile {
   id: string;
@@ -45,7 +45,7 @@ const getTemplates = (): Template[] => [
     color: 'text-blue-600',
     bgColor: 'bg-blue-50 hover:bg-blue-100',
     icon: '🏛️',
-    requirements: schemaProcessingService.getTemplateRequirements('upsc')
+    requirements: enhancedDocumentProcessingService.getTemplateRequirements('upsc')
   },
   {
     id: 'ssc',
@@ -54,7 +54,7 @@ const getTemplates = (): Template[] => [
     color: 'text-green-600',
     bgColor: 'bg-green-50 hover:bg-green-100',
     icon: '📝',
-    requirements: schemaProcessingService.getTemplateRequirements('ssc')
+    requirements: enhancedDocumentProcessingService.getTemplateRequirements('ssc')
   },
   {
     id: 'ielts',
@@ -63,7 +63,7 @@ const getTemplates = (): Template[] => [
     color: 'text-purple-600', 
     bgColor: 'bg-purple-50 hover:bg-purple-100',
     icon: '🌐',
-    requirements: schemaProcessingService.getTemplateRequirements('ielts')
+    requirements: enhancedDocumentProcessingService.getTemplateRequirements('ielts')
   }
 ];
 
@@ -169,12 +169,31 @@ export const EnhancedUploadSection: React.FC<EnhancedUploadSectionProps> = ({
     
     try {
       const files = uploadedFiles.map(uf => uf.file);
-      const result = await schemaProcessingService.processFiles(files, selectedTemplate.id);
+      const result = await enhancedDocumentProcessingService.processFiles(files, selectedTemplate.id);
       
       setShowPermissionModal(false);
       
       if (result.success) {
         toast.success(`Successfully processed ${result.validationReport.processedFiles} files!`);
+        
+        // Show download option if ZIP was created
+        if (result.downloadUrl) {
+          toast.success('📁 Processed documents are ready for download! Check console for download link.', {
+            duration: 5000
+          });
+          
+          // Create download button in console or automatically trigger download
+          setTimeout(() => {
+            const a = document.createElement('a');
+            a.href = result.downloadUrl!;
+            a.download = `processed_documents_${selectedTemplate.id}_${Date.now()}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            toast.success('Download started!');
+          }, 1000);
+        }
+        
         console.log('Processing result:', result);
       } else {
         toast.error(`Processing failed with ${result.errors.length} errors`);

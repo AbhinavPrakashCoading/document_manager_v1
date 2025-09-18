@@ -46,6 +46,7 @@ import { DraftsList } from '@/components/draft/DraftsList';
 import { draftService, DraftData } from '@/features/draft/draftService';
 import { clientStorageService } from '@/features/storage/ClientStorageService';
 import { EnhancedUploadSection } from '@/components/EnhancedUploadSection';
+import { DatabaseStatusIndicator } from '@/components/DatabaseStatusIndicator';
 import toast from 'react-hot-toast';
 
 interface Document {
@@ -737,23 +738,28 @@ const Dashboard: React.FC = () => {
           })}
         </nav>
 
-        <div className="absolute bottom-4 left-4 right-4">
+        <div className="absolute bottom-4 left-4 right-4 space-y-3">
           {!sidebarCollapsed && user.isAuthenticated && (
-            <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-3 rounded-lg">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-600">Storage</span>
-                <span className="font-medium">{Math.round((user.storageUsed! / user.storageLimit!) * 100)}%</span>
+            <>
+              <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-3 rounded-lg">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-gray-600">Storage</span>
+                  <span className="font-medium">{Math.round((user.storageUsed! / user.storageLimit!) * 100)}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-1 mt-1">
+                  <div 
+                    className="bg-gradient-to-r from-purple-500 to-blue-600 h-1 rounded-full"
+                    style={{ width: `${(user.storageUsed! / user.storageLimit!) * 100}%` }}
+                  />
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {user.storageUsed}GB of {user.storageLimit}GB used
+                </div>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-1 mt-1">
-                <div 
-                  className="bg-gradient-to-r from-purple-500 to-blue-600 h-1 rounded-full"
-                  style={{ width: `${(user.storageUsed! / user.storageLimit!) * 100}%` }}
-                />
-              </div>
-              <div className="text-xs text-gray-500 mt-1">
-                {user.storageUsed}GB of {user.storageLimit}GB used
-              </div>
-            </div>
+              
+              {/* Database Status Indicator */}
+              <DatabaseStatusIndicator />
+            </>
           )}
         </div>
       </div>
