@@ -40,13 +40,19 @@ import {
   RefreshCw,
   AlertTriangle,
   Home,
-  LogOut
+  LogOut,
+  Smartphone,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 import { DraftsList } from '@/components/draft/DraftsList';
 import { draftService, DraftData } from '@/features/draft/draftService';
 import { clientStorageService } from '@/features/storage/ClientStorageService';
 import { EnhancedUploadSection } from '@/components/EnhancedUploadSection';
 import { DatabaseStatusIndicator } from '@/components/DatabaseStatusIndicator';
+import { PWAInstallPrompt, PWAStatusIndicator, usePWA } from '@/components/PWA';
+import { ClientPWAInstallPrompt, ClientPWAStatusIndicator } from '@/components/ClientPWA';
+import { hybridStorage } from '@/features/storage/HybridStorageService';
 import toast from 'react-hot-toast';
 
 interface Document {
@@ -759,6 +765,11 @@ const Dashboard: React.FC = () => {
               
               {/* Database Status Indicator */}
               <DatabaseStatusIndicator />
+              
+              {/* PWA Status Indicator */}
+              <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                <ClientPWAStatusIndicator />
+              </div>
             </>
           )}
         </div>
@@ -906,6 +917,9 @@ const Dashboard: React.FC = () => {
       <div className="fixed top-20 right-4 space-y-2 z-40">
         {/* React Hot Toast will render here */}
       </div>
+
+      {/* PWA Install Prompt */}
+      <ClientPWAInstallPrompt />
     </div>
   );
 };

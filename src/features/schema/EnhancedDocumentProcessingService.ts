@@ -3,7 +3,7 @@
 
 import toast from 'react-hot-toast';
 import JSZip from 'jszip';
-import { supabaseStorageService } from '@/features/storage/SupabaseStorageService';
+import { hybridStorage } from '@/features/storage/HybridStorageService';
 
 // Dynamically import PDF.js only on client side
 let pdfjsLib: any = null;
@@ -214,39 +214,35 @@ class EnhancedDocumentProcessingService {
     const successfulFiles = processedFiles.filter(f => f.status === 'processed').length;
     const complianceScore = Math.round((successfulFiles / files.length) * 100);
 
-    // Store processing session in database
-    const sessionData = await supabaseStorageService.createProcessingSession({
-      templateId,
-      totalFiles: files.length,
-      processedFiles: successfulFiles,
-      failedFiles: files.length - successfulFiles,
-      complianceScore,
-      totalSizeSaved,
-      status: successfulFiles > 0 ? 'completed' : 'failed'
-    });
-
-    // Store each processed document
-    for (const processedFile of processedFiles) {
-      if (processedFile.status === 'processed') {
-        try {
-          await supabaseStorageService.storeDocument({
-            filename: processedFile.processedName,
-            originalName: processedFile.originalName,
-            fileType: files.find(f => f.name === processedFile.originalName)?.type || 'unknown',
-            fileSize: processedFile.fileSize,
-            templateId,
-            processingStatus: 'completed',
-            extractedText: processedFile.extractedText,
-            pageCount: processedFile.pageCount,
-            optimizedSize: processedFile.optimizedSize,
-            complianceScore: Math.round((processedFile.validations.filter(v => v.passed).length / processedFile.validations.length) * 100),
-            validationIssues: processedFile.validations.filter(v => !v.passed),
-            processedAt: new Date().toISOString()
+    // Store processing session and results using hybrid storage
+    try {
+      for (const result of processedFiles) {
+        if (result.status === 'processed') {
+          // Create a file from the processed data for storage
+          const fileContent = result.transformations.join('\n') || result.originalName;
+          const processedFile = new File([fileContent], result.processedName, {
+            type: 'text/plain'
           });
-        } catch (error) {
-          console.warn('Failed to store document:', error);
+
+          // Store using hybrid storage (IndexedDB + Supabase sync)
+          await hybridStorage.storeDocument(processedFile, {
+            text: result.transformations.join('\n'),
+            metadata: {
+              originalName: result.originalName,
+              validations: result.validations,
+              transformations: result.transformations,
+              processingTime: Date.now()
+            }
+          });
         }
       }
+    } catch (storageError) {
+      console.error('Failed to store processed documents:', storageError);
+      errors.push({
+        file: 'storage',
+        error: 'Failed to store processed documents',
+        code: storageError instanceof Error ? storageError.message : 'STORAGE_ERROR'
+      });
     }
 
     // Create downloadable ZIP with processed files
