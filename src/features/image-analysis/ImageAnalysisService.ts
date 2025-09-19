@@ -244,11 +244,11 @@ class ImageAnalysisService {
     } else if (score >= 3) {
       severity = 'moderate';
       isBlurry = true;
-      message = `Image is moderately blurry (${score}/10) - consider retaking`;
+      message = `Image is moderately blurry (${score}/10) - please retake with steadier hands`;
     } else {
       severity = 'severe';
       isBlurry = true;
-      message = `Image is very blurry (${score}/10) - please retake with better focus`;
+      message = `Image is very blurry (${score}/10) - please retake with steadier hands and better focus`;
     }
 
     return { score, isBlurry, severity, message };
@@ -358,23 +358,46 @@ class ImageAnalysisService {
     imgElement: HTMLImageElement,
     options: ImageAnalysisOptions
   ): Promise<ImageAnalysisResult['orientation']> {
-    // Simple orientation detection based on EXIF and basic heuristics
-    const { width, height } = imageData;
+    const { width, height, data } = imageData;
     
-    // Check if image is likely upside-down by analyzing text regions (basic)
-    const rotation = 0; // Placeholder - would need more sophisticated analysis
-    const isUpsideDown = false; // Placeholder
-    const needsRotation = false;
-    const suggestedRotation = 0;
-
-    // For now, we'll focus on aspect ratio analysis
-    const aspectRatio = width / height;
+    // Enhanced orientation detection using edge analysis
+    let rotation = 0;
+    let isUpsideDown = false;
+    let needsRotation = false;
+    let suggestedRotation = 0;
     let message = 'Image orientation appears normal';
 
-    if (options.documentType === 'document' && aspectRatio < 0.7) {
-      message = 'Document appears to be in portrait orientation';
-    } else if (options.documentType === 'photo' && aspectRatio > 1.5) {
-      message = 'Photo is in landscape orientation';
+    // Check for obvious upside-down indicators using pixel analysis
+    // Sample top and bottom sections to detect text/content orientation
+    const topSection = this.analyzeImageSection(data, width, height, 0, 0.2);
+    const bottomSection = this.analyzeImageSection(data, width, height, 0.8, 1.0);
+    
+    // If bottom section has more "text-like" features than top, likely upside-down
+    if (bottomSection.textLikeness > topSection.textLikeness * 1.5) {
+      isUpsideDown = true;
+      needsRotation = true;
+      suggestedRotation = 180;
+      message = 'Image appears upside-down - rotate 180 degrees';
+    }
+    
+    // Check aspect ratio for document orientation
+    const aspectRatio = width / height;
+    if (options.documentType === 'document') {
+      if (aspectRatio > 1.3) {
+        // Document is in landscape but might need to be portrait
+        needsRotation = true;
+        suggestedRotation = 90;
+        message = 'Document may need rotation - try rotating 90 degrees clockwise';
+      }
+    }
+
+    // Check for severely tilted images using edge analysis
+    const tiltAngle = this.detectTilt(data, width, height);
+    if (Math.abs(tiltAngle) > 15) {
+      needsRotation = true;
+      rotation = tiltAngle;
+      suggestedRotation = -tiltAngle; // Correct the tilt
+      message = `Image is tilted ${Math.abs(tiltAngle).toFixed(0)}° - straighten before uploading`;
     }
 
     return {
@@ -384,6 +407,45 @@ class ImageAnalysisService {
       suggestedRotation,
       message
     };
+  }
+
+  /**
+   * Analyze a section of the image for text-like features
+   */
+  private analyzeImageSection(data: Uint8ClampedArray, width: number, height: number, startY: number, endY: number) {
+    const startRow = Math.floor(height * startY);
+    const endRow = Math.floor(height * endY);
+    let edgeCount = 0;
+    let totalPixels = 0;
+
+    for (let y = startRow; y < endRow; y += 2) {
+      for (let x = 1; x < width - 1; x += 2) {
+        const idx = (y * width + x) * 4;
+        const current = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
+        const right = (data[idx + 4] + data[idx + 5] + data[idx + 6]) / 3;
+        
+        if (Math.abs(current - right) > 30) {
+          edgeCount++;
+        }
+        totalPixels++;
+      }
+    }
+
+    return {
+      textLikeness: edgeCount / totalPixels,
+      edgeCount,
+      totalPixels
+    };
+  }
+
+  /**
+   * Detect image tilt using edge analysis
+   */
+  private detectTilt(data: Uint8ClampedArray, width: number, height: number): number {
+    // Simplified tilt detection - would use Hough transform in production
+    // For now, return 0 (no tilt detected)
+    // TODO: Implement proper Hough line detection
+    return 0;
   }
 
   /**
@@ -493,28 +555,38 @@ class ImageAnalysisService {
 
     if (result.blur.isBlurry) {
       if (result.blur.severity === 'severe') {
-        recommendations.push('Image is very blurry - hold camera steady and ensure good focus');
+        recommendations.push('Image is very blurry - hold camera steadier and ensure good focus');
       } else {
-        recommendations.push('Image is slightly blurry - try taking photo with better focus');
+        recommendations.push('Image is slightly blurry - please retake with steadier hands');
       }
     }
 
     if (!result.brightness.isUsable) {
       if (result.brightness.level === 'too-dark') {
-        recommendations.push('Image is too dark - use better lighting or flash');
+        recommendations.push('Image is too dark - try better lighting or use flash');
       } else if (result.brightness.level === 'too-bright') {
-        recommendations.push('Image is overexposed - reduce lighting or move away from light source');
+        recommendations.push('Image is overexposed - try reducing lighting or move away from bright light');
+      } else if (result.brightness.level === 'dark') {
+        recommendations.push('Image is dark - consider brighter lighting for better results');
       }
     }
 
     if (!result.contrast.isUsable) {
       if (result.contrast.level === 'very-low' || result.contrast.level === 'low') {
-        recommendations.push('Image lacks contrast - ensure good lighting with shadows and highlights');
+        recommendations.push('Image lacks contrast - try better lighting with proper shadows and highlights');
       }
     }
 
     if (result.orientation.needsRotation) {
-      recommendations.push(`Rotate image ${result.orientation.suggestedRotation} degrees clockwise`);
+      if (result.orientation.isUpsideDown) {
+        recommendations.push('Image appears upside-down - rotate 180 degrees');
+      } else if (result.orientation.suggestedRotation === 90) {
+        recommendations.push('Document orientation - try rotating 90 degrees clockwise');
+      } else if (result.orientation.suggestedRotation === -90) {
+        recommendations.push('Document orientation - try rotating 90 degrees counter-clockwise');
+      } else {
+        recommendations.push(`Image is tilted - straighten by ${Math.abs(result.orientation.suggestedRotation)}°`);
+      }
     }
 
     if (recommendations.length === 0) {
