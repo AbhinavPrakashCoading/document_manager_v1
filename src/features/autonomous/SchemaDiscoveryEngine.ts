@@ -1,11 +1,10 @@
 /**
  * Phase 3: Schema Discovery Engine
- * Autonomous discovery and monitoring of exam forms with automatic schema generation
+ * Autonomous system for discovering and monitoring exam forms with automatic schema generation
+ * SERVER-SIDE ONLY - Uses Node.js specific libraries
  */
 
-'use client';
-
-import { VisualFormAnalyzer, IntelligentSchema, ChangeDetection } from './VisualWebScraper';
+import { VisualWebScraper, ScrapedFormData, FormDiscoveryResult } from './VisualWebScraper';
 import { AdaptiveLearningSystem } from './AdaptiveLearningSystem';
 import * as cheerio from 'cheerio';
 

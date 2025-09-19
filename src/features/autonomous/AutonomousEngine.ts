@@ -1,9 +1,8 @@
 /**
  * Phase 3: Autonomous Engine Integration
  * Unified system that coordinates all autonomous intelligence systems
+ * SERVER-SIDE ONLY - Uses Node.js specific libraries
  */
-
-'use client';
 
 import { VisualWebScraper, FormDiscoveryResult, ScrapedFormData } from './VisualWebScraper';
 import { AdaptiveLearningSystem, ValidationOutcome, UserFeedback, UserProfile } from './AdaptiveLearningSystem';

@@ -38,7 +38,29 @@ const config: NextConfig = {
         net: false,
         tls: false,
         crypto: false,
+        dns: false,
+        module: false,
+        'node:assert': false,
+        'node:child_process': false,
+        'node:crypto': false,
+        'node:fs': false,
+        'node:net': false,
+        'node:tls': false,
+        'node:dns': false,
+        'node:module': false,
+        puppeteer: false,
+        playwright: false,
+        '@tensorflow/tfjs-node': false,
+        'brain.js': false,
+        'ml-matrix': false,
+        'simple-statistics': false,
       }
+      
+      // Add module rules to ignore problematic imports
+      config.module.rules.push({
+        test: /autonomous|puppeteer|playwright|brain\.js|ml-matrix|simple-statistics|@tensorflow\/tfjs-node/,
+        use: 'null-loader'
+      })
     }
     
     return config

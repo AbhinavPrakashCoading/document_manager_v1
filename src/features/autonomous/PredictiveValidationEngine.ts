@@ -1,9 +1,8 @@
 /**
  * Phase 3: Predictive Intelligence System
  * Advanced analytics for submission success probability and proactive issue prevention
+ * SERVER-SIDE ONLY - Uses Node.js specific ML libraries
  */
-
-'use client';
 
 import { Matrix } from 'ml-matrix';
 import * as brain from 'brain.js';
@@ -84,7 +83,7 @@ export interface PredictiveModel {
   lastTrained: Date;
   inputFeatures: string[];
   weights: number[];
-  neuralNetwork?: brain.NeuralNetwork;
+  neuralNetwork?: brain.NeuralNetwork<any, any>;
 }
 
 export interface RealTimeAlert {

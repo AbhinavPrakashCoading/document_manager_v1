@@ -1,9 +1,8 @@
 /**
- * Phase 3: Visual Web Scraping Engine
- * Autonomous form discovery and analysis using computer vision
+ * Phase 3: Visual Web Scraper
+ * Autonomous web scraping with headless browser automation
+ * SERVER-SIDE ONLY - Uses Node.js specific libraries
  */
-
-'use client';
 
 import puppeteer, { Browser, Page } from 'puppeteer';
 import * as cheerio from 'cheerio';
@@ -82,7 +81,7 @@ export interface ChangeDetection {
   updateRecommendations: string[];
 }
 
-export class VisualFormAnalyzer {
+export class VisualWebScraper {
   private browser: Browser | null = null;
   private textIntelligence: TextIntelligence;
   private documentClassifier: DocumentClassifier;

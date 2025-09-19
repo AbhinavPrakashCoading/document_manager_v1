@@ -135,6 +135,7 @@
     "gzip-size": "6.0.0",
     "jsdom": "^26.1.0",
     "mkdirp": "^3.0.1",
+    "null-loader": "^4.0.1",
     "patch-package": "^8.0.0",
     "postcss": "^8.5.3",
     "postcss-import": "^16.1.0",

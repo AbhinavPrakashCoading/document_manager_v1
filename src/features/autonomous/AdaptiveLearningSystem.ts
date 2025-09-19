@@ -1,9 +1,8 @@
 /**
- * Phase 3: Self-Learning Validation System
- * AI-powered adaptive learning from user feedback and success patterns
+ * Phase 3: Adaptive Learning System
+ * AI-powered system that learns from user feedback and adapts validation thresholds
+ * SERVER-SIDE ONLY - Uses Node.js specific ML libraries
  */
-
-'use client';
 
 import { Matrix } from 'ml-matrix';
 import * as ss from 'simple-statistics';
