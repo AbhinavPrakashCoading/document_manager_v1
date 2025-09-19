@@ -8,21 +8,30 @@ import { ZipPreviewModal } from './ZipPreviewModal';
 import toast from 'react-hot-toast';
 import { transformFile } from '@/features/transform/transformFile';
 
-interface DocumentRequirement {
-  type: string;
-  format: string;
-  maxSizeKB: number;
-  dimensions?: string;
-  namingConvention?: string;
-}
+import { EnhancedDocumentRequirement } from '@/features/exam/examSchema';
 
-function convertSchemaToRequirements(schema: ExamSchema): DocumentRequirement[] {
-  return schema.properties.documents.items.properties.type.enum.map((type) => ({
-    type,
-    format: 'image/jpeg',  // Default format
-    maxSizeKB: 1024,      // Default max size
-    dimensions: '200x200', // Default dimensions
-    namingConvention: `${type.toLowerCase()}_[timestamp]`
+function convertSchemaToRequirements(schema: ExamSchema): EnhancedDocumentRequirement[] {
+  return schema.requirements.map(req => ({
+    ...req,
+    id: req.id || `${req.type.toLowerCase()}_${Date.now()}`,
+    displayName: req.displayName || req.type,
+    description: req.description || `Upload ${req.type.toLowerCase()}`,
+    aliases: req.aliases || [req.type.toLowerCase()],
+    category: req.category || 'other',
+    subjective: req.subjective || [],
+    validationRules: req.validationRules || [
+      {
+        type: 'strict',
+        rule: 'file_size_limit',
+        message: `File size must not exceed ${req.maxSizeKB}KB`,
+        field: req.type.toLowerCase(),
+        canOverride: false
+      }
+    ],
+    mandatory: req.mandatory ?? true,
+    examples: req.examples || [],
+    commonMistakes: req.commonMistakes || [],
+    helpText: req.helpText || `Upload a valid ${req.type.toLowerCase()}`
   }));
 }
 
@@ -102,16 +111,34 @@ export function UploadZone({ schema }: { schema: ExamSchema }) {
 
   const groupErrorsByType = (results: Record<string, string[]>) => {
     const grouped: Record<string, string[]> = {
-      size: [],
-      format: [],
+      strict: [],
+      soft: [],
+      warning: [],
       unknown: [],
     };
 
     for (const [fileName, errors] of Object.entries(results)) {
       for (const err of errors) {
-        if (err.includes('exceeds max size')) grouped.size.push(fileName);
-        else if (err.includes('expected') && err.includes('type')) grouped.format.push(fileName);
-        else grouped.unknown.push(fileName);
+        const matchedReq = requirements.find((r) =>
+          r.validationRules?.some(rule => rule.message === err)
+        );
+
+        if (matchedReq) {
+          const rule = matchedReq.validationRules?.find(r => r.message === err);
+          if (rule) {
+            grouped[rule.type].push(fileName);
+            continue;
+          }
+        }
+
+        // Fallback categorization
+        if (err.includes('exceeds max size') || err.includes('dimension')) {
+          grouped.strict.push(fileName);
+        } else if (err.includes('expected') && err.includes('type')) {
+          grouped.soft.push(fileName);
+        } else {
+          grouped.unknown.push(fileName);
+        }
       }
     }
 
@@ -141,16 +168,43 @@ export function UploadZone({ schema }: { schema: ExamSchema }) {
       {totalErrors > 0 && (
         <div className="bg-red-50 border border-red-300 rounded p-4 text-sm space-y-2">
           <h3 className="font-semibold text-red-700">Validation Summary</h3>
-          <ul className="list-disc ml-4 text-red-600">
-            {Object.entries(errorGroups).map(([type, files]) => (
-              <li key={type}>
-                {type === 'size' && '📏 Size Violations'}
-                {type === 'format' && '🧬 Format Mismatches'}
+          <ul className="list-disc ml-4">
+            {Object.entries(errorGroups).map(([type, files]) => files.length > 0 && (
+              <li key={type} className={`
+                ${type === 'strict' ? 'text-red-600' : ''}
+                ${type === 'soft' ? 'text-yellow-600' : ''}
+                ${type === 'warning' ? 'text-blue-600' : ''}
+                ${type === 'unknown' ? 'text-gray-600' : ''}
+              `}>
+                {type === 'strict' && '🚫 Critical Issues'}
+                {type === 'soft' && '⚠️ Warnings'}
+                {type === 'warning' && 'ℹ️ Suggestions'}
                 {type === 'unknown' && '❓ Unknown Issues'}
-                — {files.length} file(s)
+                {' '}— {files.length} file(s)
+                <ul className="ml-4 mt-1 text-xs">
+                  {files.map(fileName => {
+                    const matchedReq = requirements.find((r) =>
+                      r.aliases?.some(alias => fileName.toLowerCase().includes(alias.toLowerCase()))
+                    );
+                    return (
+                      <li key={fileName} className="flex items-start gap-2">
+                        <span>•</span>
+                        <div>
+                          <span>{fileName}</span>
+                          {matchedReq?.helpText && (
+                            <p className="text-blue-500 mt-1">💡 {matchedReq.helpText}</p>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
               </li>
             ))}
           </ul>
+          <p className="text-xs text-gray-600 mt-2">
+            🔍 Review the requirements panel above for detailed guidelines and common mistakes to avoid.
+          </p>
         </div>
       )}
 
@@ -180,18 +234,39 @@ export function UploadZone({ schema }: { schema: ExamSchema }) {
 
               <div className="px-4 py-2 space-y-1 text-xs text-gray-700">
                 {matchedReq && (
-                  <ul className="space-y-1">
-                    <li>Type: {matchedReq.type}</li>
-                    <li>Format: {matchedReq.format}</li>
-                    <li>Max Size: {matchedReq.maxSizeKB}KB</li>
-                    <li>Dimensions: {matchedReq.dimensions}</li>
-                  </ul>
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                      <p><span className="font-medium">Type:</span> {matchedReq.displayName}</p>
+                      <p><span className="font-medium">Category:</span> {matchedReq.category}</p>
+                      <p><span className="font-medium">Format:</span> {matchedReq.format}</p>
+                      <p><span className="font-medium">Max Size:</span> {matchedReq.maxSizeKB}KB</p>
+                      {matchedReq.dimensions && (
+                        <p><span className="font-medium">Dimensions:</span> {matchedReq.dimensions}</p>
+                      )}
+                    </div>
+
+                    {matchedReq.subjective && matchedReq.subjective.length > 0 && (
+                      <div className="mt-2">
+                        <p className="font-medium">Requirements:</p>
+                        <ul className="ml-4">
+                          {matchedReq.subjective
+                            .filter(sub => sub.confidence >= 0.8)
+                            .map((sub, idx) => (
+                              <li key={idx} className="text-gray-600 flex items-start gap-2">
+                                <span className="text-blue-500">•</span>
+                                <span>{sub.requirement}</span>
+                              </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 {errors.length > 0 && (
-                  <div className="text-red-600 mt-2">
-                    <strong>Errors:</strong>
-                    <ul className="list-disc ml-4">
+                  <div className="mt-2">
+                    <strong className="text-red-600">Issues:</strong>
+                    <ul className="ml-4 space-y-1">
                       {errors.map((err, idx) => (
                         <li key={idx}>{err}</li>
                       ))}

@@ -1,0 +1,181 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth/next'
+import { documentStorageService } from '@/features/storage/DocumentStorageService'
+import { prisma } from '@/lib/prisma'
+import { authOptions } from '@/lib/auth'
+
+/**
+ * GET /api/storage/stats
+ * Get comprehensive storage statistics
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const includeGlobal = searchParams.get('global') === 'true'
+
+    // User-specific stats
+    const userStats = await Promise.all([
+      // Total documents by type
+      prisma.document.groupBy({
+        by: ['documentType'],
+        where: { userId: user.id },
+        _count: { id: true },
+        _sum: { fileSize: true }
+      }),
+
+      // Documents by exam type
+      prisma.document.groupBy({
+        by: ['examType'],
+        where: { userId: user.id },
+        _count: { id: true },
+        _sum: { fileSize: true }
+      }),
+
+      // Recent upload activity (last 30 days)
+      prisma.document.count({
+        where: {
+          userId: user.id,
+          uploadDate: {
+            gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+          }
+        }
+      })
+    ])
+
+    const [documentsByType, documentsByExam, recentUploads] = userStats
+
+    let globalStats = null
+    if (includeGlobal) {
+      // Global system stats (only get if user is admin)
+      globalStats = await storageService.getStorageStats()
+    }
+
+    // Calculate storage usage
+    const totalStorage = documentsByType.reduce((acc, item) => acc + (item._sum.fileSize || 0), 0)
+    const totalDocuments = documentsByType.reduce((acc, item) => acc + item._count.id, 0)
+
+    // Enhancement pipeline stats (if new models exist)
+    let enhancementStats = null
+    try {
+      // TODO: Enable after running database migration
+      // const jobs = await prisma.enhancementJob.groupBy({
+      //   by: ['status'],
+      //   _count: { id: true }
+      // })
+      // enhancementStats = jobs.reduce((acc, job) => {
+      //   acc[job.status] = job._count.id
+      //   return acc
+      // }, {} as Record<string, number>)
+    } catch (error) {
+      console.log('Enhancement stats not available (migration needed)')
+    }
+
+    return NextResponse.json({
+      user: {
+        totalDocuments,
+        totalStorageBytes: totalStorage,
+        totalStorageMB: Math.round(totalStorage / (1024 * 1024) * 100) / 100,
+        recentUploads,
+        documentsByType: documentsByType.map(item => ({
+          type: item.documentType,
+          count: item._count.id,
+          sizeBytes: item._sum.fileSize || 0
+        })),
+        documentsByExam: documentsByExam.map(item => ({
+          exam: item.examType,
+          count: item._count.id,
+          sizeBytes: item._sum.fileSize || 0
+        }))
+      },
+      enhancement: enhancementStats,
+      global: globalStats,
+      generatedAt: new Date().toISOString()
+    })
+
+  } catch (error) {
+    console.error('Storage stats error:', error)
+    return NextResponse.json({ 
+      error: 'Failed to retrieve storage statistics',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
+  }
+}
+
+/**
+ * GET /api/storage/health
+ * System health check for storage services
+ */
+export async function GET_HEALTH(request: NextRequest) {
+  try {
+    const healthChecks = {
+      database: false,
+      storageDirectories: false,
+      enhancementPipeline: false,
+      diskSpace: 0
+    }
+
+    // Database connectivity
+    try {
+      await prisma.$queryRaw`SELECT 1`
+      healthChecks.database = true
+    } catch (error) {
+      console.error('Database health check failed:', error)
+    }
+
+    // Storage directories accessibility
+    try {
+      const { promises: fs } = await import('fs')
+      await fs.access('./storage')
+      healthChecks.storageDirectories = true
+    } catch (error) {
+      console.error('Storage directories check failed:', error)
+    }
+
+    // Enhancement pipeline readiness
+    try {
+      // Check if Sharp is available
+      const sharp = await import('sharp')
+      healthChecks.enhancementPipeline = true
+    } catch (error) {
+      console.error('Enhancement pipeline check failed:', error)
+    }
+
+    // Disk space check (simplified)
+    try {
+      const { promises: fs } = await import('fs')
+      const stats = await fs.stat('./storage')
+      healthChecks.diskSpace = 100 // Placeholder - would use actual disk space check
+    } catch (error) {
+      console.error('Disk space check failed:', error)
+    }
+
+    const isHealthy = healthChecks.database && healthChecks.storageDirectories
+    
+    return NextResponse.json({
+      status: isHealthy ? 'healthy' : 'unhealthy',
+      checks: healthChecks,
+      timestamp: new Date().toISOString()
+    }, { status: isHealthy ? 200 : 503 })
+
+  } catch (error) {
+    console.error('Health check error:', error)
+    return NextResponse.json({ 
+      status: 'error',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    }, { status: 500 })
+  }
+}

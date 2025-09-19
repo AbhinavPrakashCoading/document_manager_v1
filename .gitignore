@@ -28,6 +28,12 @@ yarn-error.log*
 .env.development.local
 .env.test.local
 .env.production.local
+
+# database
+*.db
+*.sqlite
+prisma/dev.db
+
 storybook-static/
 /test-results/
 /playwright-report/
