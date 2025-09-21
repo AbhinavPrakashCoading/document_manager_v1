@@ -1,6 +1,7 @@
 {
-  "name": "next-enterprise",
-  "version": "0.0.0",
+  "name": "@rythmiq/dockit",
+  "version": "1.0.0",
+  "description": "Autonomous Document Intelligence Platform by Rythmiq",
   "private": true,
   "scripts": {
     "dev": "cross-env FORCE_COLOR=1 next dev --turbo",
