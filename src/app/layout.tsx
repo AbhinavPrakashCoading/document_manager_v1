@@ -3,18 +3,18 @@ import type { Metadata } from 'next';
 import { Providers } from '@/components/providers';
 
 export const metadata: Metadata = {
-  title: 'Document Manager Pro',
-  description: 'Offline-first document processing and management application with real-time validation and cloud sync.',
+  title: 'DocKit - Rythmiq',
+  description: 'Autonomous Document Intelligence Platform - Streamline document processing with AI-powered validation, smart schema discovery, and predictive analytics.',
   icons: {
     icon: '/favicon.ico',
     apple: '/icons/icon-192x192.png',
   },
   manifest: '/manifest.json',
   openGraph: {
-    title: 'Document Manager Pro',
-    description: 'Process documents offline with automatic cloud sync and real-time validation.',
-    url: 'https://yourdomain.com',
-    siteName: 'Document Manager Pro',
+    title: 'DocKit by Rythmiq',
+    description: 'Enterprise-grade autonomous document intelligence with AI validation and smart processing.',
+    url: 'https://dockit.rythmiq.com',
+    siteName: 'DocKit - Rythmiq',
     images: [
       {
         url: '/og-image.png',
